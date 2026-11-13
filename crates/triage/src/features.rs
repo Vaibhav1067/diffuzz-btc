@@ -215,6 +215,69 @@ pub fn opcode_set(case: &Case) -> OpcodeSet {
     set
 }
 
+/// BIP66 `IsValidSignatureEncoding`: is `sig` (DER plus hash-type byte) strictly encoded?
+pub fn is_strict_der(sig: &[u8]) -> bool {
+    let n = sig.len();
+    if !(9..=73).contains(&n) || sig[0] != 0x30 || sig[1] as usize != n - 3 {
+        return false;
+    }
+    let len_r = sig[3] as usize;
+    if 5 + len_r >= n {
+        return false;
+    }
+    let len_s = sig[5 + len_r] as usize;
+    if len_r + len_s + 7 != n {
+        return false;
+    }
+    if sig[2] != 0x02 || len_r == 0 || sig[4] & 0x80 != 0 {
+        return false;
+    }
+    if len_r > 1 && sig[4] == 0 && sig[5] & 0x80 == 0 {
+        return false;
+    }
+    if sig[len_r + 4] != 0x02 || len_s == 0 || sig[len_r + 6] & 0x80 != 0 {
+        return false;
+    }
+    !(len_s > 1 && sig[len_r + 6] == 0 && sig[len_r + 7] & 0x80 == 0)
+}
+
+fn looks_like_der(item: &[u8]) -> bool {
+    (9..=80).contains(&item.len()) && item[0] == 0x30
+}
+
+/// Does the case carry something shaped like an ECDSA signature (starts with the DER sequence
+/// tag) that is *not* strict DER? Looks at witness items and at pushes in every script.
+pub fn has_nonstrict_der_signature(case: &Case) -> bool {
+    let p = parts(case);
+    let mut items: Vec<Vec<u8>> = p.witness.clone();
+    let scripts = [
+        Some(&p.script_sig),
+        Some(&p.script_pubkey),
+        p.redeem_script.as_ref(),
+        p.witness_script.as_ref(),
+    ];
+    for script in scripts.into_iter().flatten() {
+        items.extend(
+            instructions(script)
+                .0
+                .iter()
+                .filter_map(|i| i.data.map(<[u8]>::to_vec)),
+        );
+    }
+    items.iter().any(|i| looks_like_der(i) && !is_strict_der(i))
+}
+
+/// Names accepted by [`has_feature`].
+pub const FEATURES: [&str; 1] = ["nonstrict-der-signature"];
+
+/// Evaluate a named case feature (used by allowlist entries). Unknown names are `false`.
+pub fn has_feature(case: &Case, name: &str) -> bool {
+    match name {
+        "nonstrict-der-signature" => has_nonstrict_der_signature(case),
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,5 +434,45 @@ mod tests {
         // Pushes and small numbers are not counted.
         let c = case(&[0x51, 0x02, 0xac, 0xac, 0x00, 0x4f, 0x75], &[], vec![]);
         assert_eq!(opcode_set(&c).opcodes(), vec![0x75]);
+    }
+
+    #[test]
+    fn strict_der_and_feature() {
+        // 30 06 02 01 01 02 01 01 + hashtype
+        let strict = [0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01, 0x01];
+        assert!(is_strict_der(&strict));
+        let mut wrong_len = strict;
+        wrong_len[1] = 0x07;
+        assert!(!is_strict_der(&wrong_len));
+        // Unnecessary padding on R.
+        assert!(!is_strict_der(&[
+            0x30, 0x07, 0x02, 0x02, 0x00, 0x01, 0x02, 0x01, 0x01, 0x01
+        ]));
+        // Negative R.
+        assert!(!is_strict_der(&[
+            0x30, 0x06, 0x02, 0x01, 0x81, 0x02, 0x01, 0x01, 0x01
+        ]));
+        assert!(!is_strict_der(&[]));
+
+        let mut sig_push = vec![strict.len() as u8];
+        sig_push.extend(strict);
+        assert!(!has_feature(
+            &case(&[0x51], &sig_push, vec![]),
+            "nonstrict-der-signature"
+        ));
+        let mut bad_push = vec![wrong_len.len() as u8];
+        bad_push.extend(wrong_len);
+        assert!(has_feature(
+            &case(&[0x51], &bad_push, vec![]),
+            "nonstrict-der-signature"
+        ));
+        assert!(has_feature(
+            &case(&program(0x00, 20), &[], vec![wrong_len.to_vec()]),
+            "nonstrict-der-signature"
+        ));
+        assert!(!has_feature(
+            &case(&[0x51], &bad_push, vec![]),
+            "no-such-feature"
+        ));
     }
 }

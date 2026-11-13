@@ -58,6 +58,12 @@ pub struct KnownDivergence {
     /// Flags that must all be set on the case for the entry to apply.
     #[serde(default)]
     pub flags_condition: Vec<Flag>,
+    /// Flags that must all be *absent* from the case for the entry to apply.
+    #[serde(default)]
+    pub flags_absent: Vec<Flag>,
+    /// Named structural features the case must have (see `diffuzz_triage::features::FEATURES`).
+    #[serde(default)]
+    pub case_features: Vec<String>,
     /// Path (relative to the repository root) of a minimal example case.
     pub example_case: String,
     /// Citation: upstream issue, PR, documentation or spec text.
@@ -89,6 +95,13 @@ impl KnownDivergence {
         {
             return Err(format!("{}: reference_url must be an http(s) URL", self.id));
         }
+        if let Some(bad) = self
+            .case_features
+            .iter()
+            .find(|f| !diffuzz_triage::features::FEATURES.contains(&f.as_str()))
+        {
+            return Err(format!("{}: unknown case feature {bad:?}", self.id));
+        }
         if self.impls_affected.is_empty() {
             return Err(format!("{}: impls_affected must not be empty", self.id));
         }
@@ -116,7 +129,8 @@ impl KnownDivergence {
     ///
     /// All of the following must hold:
     ///
-    /// 1. every flag in `flags_condition` is set on the case;
+    /// 1. every flag in `flags_condition` is set on the case, none in `flags_absent` is, and
+    ///    the case has every feature in `case_features`;
     /// 2. every implementation listed in `accepts` voted accept and every one in `rejects`
     ///    voted reject (an implementation that is absent or abstained fails the match);
     /// 3. the implementations *not* in `impls_affected` are unanimous, so the affected ones
@@ -124,6 +138,16 @@ impl KnownDivergence {
     /// 4. the optional error-class and raw-error filters hold for every affected rejecter.
     pub fn matches(&self, case: &Case, verdicts: &[Verdict]) -> bool {
         if !self.flags_condition.iter().all(|f| case.flags.contains(f)) {
+            return false;
+        }
+        if self.flags_absent.iter().any(|f| case.flags.contains(f)) {
+            return false;
+        }
+        if !self
+            .case_features
+            .iter()
+            .all(|f| diffuzz_triage::features::has_feature(case, f))
+        {
             return false;
         }
         let vote_of = |name: &String| {
@@ -378,6 +402,24 @@ raw_error_contains = "too big"
         assert!(!e.matches(&case(vec![Flag::Taproot]), &[ok("core")]));
         let abstained = [ok("core"), fail("btcd", ErrorClass::Unsupported, "too big")];
         assert!(!e.matches(&case(vec![Flag::Taproot]), &abstained));
+    }
+
+    #[test]
+    fn flags_absent_and_case_features() {
+        let mut e = entry();
+        e.flags_absent = vec![Flag::Dersig];
+        let good = [
+            ok("core"),
+            fail("btcd", ErrorClass::ScriptNum, "number too big"),
+        ];
+        assert!(e.matches(&case(vec![Flag::Taproot]), &good));
+        assert!(!e.matches(&case(vec![Flag::Taproot, Flag::Dersig]), &good));
+        // The test case has no scripts at all, so it cannot have the feature.
+        e.case_features = vec!["nonstrict-der-signature".into()];
+        e.validate().unwrap();
+        assert!(!e.matches(&case(vec![Flag::Taproot]), &good));
+        e.case_features = vec!["made-up".into()];
+        assert!(e.validate().unwrap_err().contains("unknown case feature"));
     }
 
     #[test]

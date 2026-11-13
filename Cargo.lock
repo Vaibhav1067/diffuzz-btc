@@ -209,6 +209,7 @@ version = "0.1.0"
 name = "diffuzz-oracle"
 version = "0.1.0"
 dependencies = [
+ "diffuzz-triage",
  "diffuzz-types",
  "serde",
  "serde_json",
