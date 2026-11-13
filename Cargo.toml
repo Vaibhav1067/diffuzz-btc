@@ -8,9 +8,10 @@ members = [
     "crates/minimize",
     "crates/triage",
     "crates/cli",
+    "adapters/core-rs",
 ]
-# cargo-fuzz keeps its own workspace; adapters join when they are implemented.
-exclude = ["fuzz", "adapters"]
+# cargo-fuzz keeps its own workspace; non-Rust adapters have their own build systems.
+exclude = ["fuzz", "adapters/btcd-go", "adapters/libbitcoin-cpp"]
 
 [workspace.package]
 version = "0.1.0"
