@@ -75,7 +75,7 @@ Response:
 - Malformed input must not crash an adapter: it answers `ok:false, error_class:"DESERIALIZE"`.
 - A crash or timeout is its own outcome (`CRASH` / `TIMEOUT`), never folded into accept/reject.
 - Flag names are an abstract enum; each adapter maps them to its implementation's flags. The
-  table lives in `docs/flag-mapping.md` (added with the first adapter).
+  table lives in `docs/flag-mapping.md`.
 - A length-prefixed binary protocol (v2) is added only if measurement shows JSON is the
   bottleneck.
 

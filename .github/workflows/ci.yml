@@ -13,21 +13,50 @@ env:
 
 jobs:
   rust:
-    name: fmt, clippy, test
+    name: fmt, clippy, test, corpus replay
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # rustup reads rust-toolchain.toml and installs the pinned toolchain + components.
       - name: Install pinned toolchain
         run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: adapters/btcd-go/go.mod
+          cache-dependency-path: adapters/btcd-go/go.sum
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: Build
-        run: cargo build --workspace
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
+      - name: Build adapters
+        run: bash scripts/build_adapters.sh
+      # The harness's correctness proof: every adapter must reproduce Core's expected verdicts.
+      - name: Corpus replay (core, btcd)
+        run: >
+          cargo run --locked -p diffuzz-cli -- replay
+          --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json
+          --impls core,btcd
+
+  go:
+    name: btcd adapter (gofmt, vet, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adapters/btcd-go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: adapters/btcd-go/go.mod
+          cache-dependency-path: adapters/btcd-go/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        run: go vet ./...
+      - name: test
+        run: go test ./...
 
   vectors:
     name: vectors match pins
