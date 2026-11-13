@@ -6,7 +6,8 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use diffuzz_corpus::{Loaded, SkipReason, VectorKind, VectorTest};
-use diffuzz_oracle::adapter::Adapter;
+use diffuzz_oracle::diff::Class;
+use diffuzz_oracle::runner::Differential;
 use diffuzz_types::{Case, Outcome, Verdict};
 
 /// Requests pipelined to an adapter at once.
@@ -59,12 +60,18 @@ pub struct FileReport {
     pub skipped: BTreeMap<SkipReason, usize>,
     /// Per-implementation results.
     pub impls: Vec<ImplReport>,
+    /// Cases per differential class (how the implementations compare with each other).
+    pub classes: BTreeMap<Class, usize>,
+    /// Matches per allowlist entry.
+    pub known: BTreeMap<String, usize>,
 }
 
 impl FileReport {
-    /// True if every implementation met every expectation.
+    /// True if every implementation met every expectation and no case was a hard divergence,
+    /// crash or timeout.
     pub fn clean(&self) -> bool {
         self.impls.iter().all(|i| i.mismatches.is_empty())
+            && self.classes.keys().all(|c| !c.is_finding())
     }
 
     /// Total skipped vectors.
@@ -128,29 +135,37 @@ pub fn score(tests: &[VectorTest], verdicts: &[Verdict], name: &str) -> ImplRepo
     report
 }
 
-/// Run every case of `loaded` through each adapter and score the results.
-pub fn run(file: &str, loaded: &Loaded, adapters: &mut [Adapter]) -> FileReport {
+/// Run every case of `loaded` through all adapters of `diff`, score each implementation
+/// against the expected verdicts, and tally the differential classes.
+pub fn run(file: &str, loaded: &Loaded, diff: &mut Differential) -> FileReport {
     let cases: Vec<Case> = loaded
         .tests
         .iter()
         .flat_map(|t| t.cases.iter().cloned())
         .collect();
+    let names = diff.adapter_names();
     let mut report = FileReport {
         file: file.to_string(),
         tests: loaded.tests.len(),
         cases: cases.len(),
         comments: loaded.comments,
         skipped: loaded.skip_summary(),
-        impls: Vec::new(),
+        ..FileReport::default()
     };
-    for adapter in adapters.iter_mut() {
-        let mut verdicts = Vec::with_capacity(cases.len());
-        for chunk in cases.chunks(BATCH) {
-            verdicts.extend(adapter.verify_batch(chunk));
+    let mut per_impl: Vec<Vec<Verdict>> = vec![Vec::with_capacity(cases.len()); names.len()];
+    for chunk in cases.chunks(BATCH) {
+        for result in diff.run_batch(chunk) {
+            *report.classes.entry(result.class).or_insert(0) += 1;
+            if let Some(id) = result.known_id {
+                *report.known.entry(id).or_insert(0) += 1;
+            }
+            for (i, v) in result.verdicts.into_iter().enumerate() {
+                per_impl[i].push(v);
+            }
         }
-        report
-            .impls
-            .push(score(&loaded.tests, &verdicts, adapter.name()));
+    }
+    for (name, verdicts) in names.iter().zip(&per_impl) {
+        report.impls.push(score(&loaded.tests, verdicts, name));
     }
     report
 }
@@ -214,6 +229,22 @@ pub fn render(report: &FileReport, max_listed: usize) -> String {
         }
         if i.mismatches.len() > max_listed {
             let _ = writeln!(s, "  ... and {} more", i.mismatches.len() - max_listed);
+        }
+    }
+    if report.impls.len() > 1 {
+        let classes: Vec<String> = report
+            .classes
+            .iter()
+            .map(|(c, n)| format!("{c} {n}"))
+            .collect();
+        let _ = writeln!(
+            s,
+            "differential ({} cases): {}",
+            report.cases,
+            classes.join(", ")
+        );
+        for (id, n) in &report.known {
+            let _ = writeln!(s, "  known divergence {id}: {n}");
         }
     }
     s
@@ -287,7 +318,9 @@ mod tests {
             cases: 6,
             comments: 1,
             skipped: BTreeMap::from([(SkipReason::PolicyFlags, 3)]),
-            impls: vec![r],
+            impls: vec![r.clone(), r],
+            classes: BTreeMap::from([(Class::AgreeOk, 4), (Class::AgreeFail, 2)]),
+            known: BTreeMap::new(),
         };
         assert!(!report.clean());
         assert_eq!(report.skipped_total(), 3);
@@ -302,6 +335,16 @@ mod tests {
             text.contains("skipped 3: depends on policy flags"),
             "{text}"
         );
+        assert!(
+            text.contains("differential (6 cases): AGREE_OK 4, AGREE_FAIL 2"),
+            "{text}"
+        );
+
+        let mut diverged = report.clone();
+        diverged.impls.iter_mut().for_each(|i| i.mismatches.clear());
+        assert!(diverged.clean());
+        diverged.classes.insert(Class::HardDiverge, 1);
+        assert!(!diverged.clean(), "a hard divergence must fail the run");
     }
 
     #[test]

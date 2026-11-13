@@ -86,6 +86,12 @@ Response:
 3. Otherwise it is a divergence. If it matches an entry in `known_divergences/` it is `KNOWN`.
 4. Anything else is a `HARD_DIVERGE`: written to `findings/private/`, never to a tracked path,
    and work on that class stops until it has been reviewed (responsible disclosure).
+5. An adapter crash or timeout is classified `CRASH` / `TIMEOUT`, takes precedence over the
+   accept/reject comparison, and is also written to `findings/private/`.
+6. An adapter may abstain (`INVALID_FLAGS`, `UNSUPPORTED`) when it cannot evaluate a case
+   faithfully. Abstentions do not vote; with fewer than two votes the case is `UNDECIDED`.
+
+The findings writer refuses to start if its directory is inside a git work tree and not ignored.
 
 Only consensus flags are used in the main oracle. Policy/standardness flags (STRICTENC, LOW_S,
 MINIMALIF, CLEANSTACK, DISCOURAGE_*, ...) differ between implementations by design and would

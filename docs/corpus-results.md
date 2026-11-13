@@ -34,6 +34,20 @@ invalid one needs at least one input rejected.
 No mismatches, so nothing needed to be classified as an adapter bug, an unsupported feature or
 an implementation difference, and `known_divergences/` is empty.
 
+## Differential result
+
+The same replay compares the implementations with each other (`ok` only):
+
+| File | Cases | AGREE_OK | AGREE_FAIL | KNOWN | HARD_DIVERGE | CRASH | TIMEOUT |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `script_tests.json` | 772 | 677 | 95 | 0 | 0 | 0 | 0 |
+| `tx_valid.json` | 176 | 176 | 0 | 0 | 0 | 0 | 0 |
+| `tx_invalid.json` | 81 | 10 | 71 | 0 | 0 | 0 | 0 |
+| **Total** | **1029** | 863 | 166 | 0 | 0 | 0 | 0 |
+
+(`tx_invalid.json` has AGREE_OK cases because only one input of an invalid transaction has to
+fail.) Throughput on this tiny run is not a benchmark; see the fuzzing results for rates.
+
 ## What was skipped, and why
 
 The main oracle runs consensus flags only (CLAUDE.md rule 5), and the Core adapter cannot
