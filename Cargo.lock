@@ -172,6 +172,7 @@ dependencies = [
  "clap",
  "diffuzz-corpus",
  "diffuzz-gen",
+ "diffuzz-minimize",
  "diffuzz-oracle",
  "diffuzz-triage",
  "diffuzz-types",
@@ -204,6 +205,11 @@ dependencies = [
 [[package]]
 name = "diffuzz-minimize"
 version = "0.1.0"
+dependencies = [
+ "diffuzz-types",
+ "ripemd",
+ "sha2",
+]
 
 [[package]]
 name = "diffuzz-oracle"
@@ -220,7 +226,11 @@ dependencies = [
 name = "diffuzz-triage"
 version = "0.1.0"
 dependencies = [
+ "diffuzz-adapter-core",
+ "diffuzz-gen",
+ "diffuzz-minimize",
  "diffuzz-types",
+ "serde_json",
 ]
 
 [[package]]

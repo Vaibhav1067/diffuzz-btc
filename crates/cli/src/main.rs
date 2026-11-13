@@ -42,6 +42,12 @@ enum Command {
     Check(CheckArgs),
     /// Merge the summary files of several fuzz segments into one.
     Summarize(SummarizeArgs),
+    /// Shrink a diverging case while every implementation keeps its verdict.
+    Minimize(MinimizeArgs),
+    /// Bucket saved findings by root cause, minimize representatives and write a report.
+    Report(ReportArgs),
+    /// Print a case in Bitcoin Core's tx_valid.json / tx_invalid.json vector format.
+    ExportCoreVector(CheckArgs),
 }
 
 /// Options shared by every command that runs the differential oracle.
@@ -132,6 +138,39 @@ struct FuzzArgs {
 }
 
 #[derive(Args)]
+struct MinimizeArgs {
+    /// A JSON file holding a case or a finding.
+    #[arg(long)]
+    case: PathBuf,
+    /// Where to write the minimized case.
+    #[arg(long)]
+    out: PathBuf,
+    /// Maximum oracle evaluations.
+    #[arg(long, default_value_t = 5_000)]
+    max_attempts: u64,
+    #[command(flatten)]
+    oracle: OracleArgs,
+}
+
+#[derive(Args)]
+struct ReportArgs {
+    /// Directory with finding files (searched one level deep).
+    #[arg(long = "in", default_value = "findings/private")]
+    input: PathBuf,
+    /// Report file. Must be in a git-ignored location while findings are undisclosed.
+    #[arg(long, default_value = "findings/private/report.md")]
+    out: PathBuf,
+    /// Findings to minimize per bucket.
+    #[arg(long, default_value_t = 5)]
+    per_bucket: usize,
+    /// Maximum oracle evaluations per minimized finding.
+    #[arg(long, default_value_t = 3_000)]
+    max_attempts: u64,
+    #[command(flatten)]
+    oracle: OracleArgs,
+}
+
+#[derive(Args)]
 struct SummarizeArgs {
     /// Segment summary files written by `fuzz --summary`.
     #[arg(long = "in", required = true, num_args = 1..)]
@@ -180,6 +219,171 @@ fn build_oracle(args: &OracleArgs) -> Result<Differential, String> {
     let allowlist = Allowlist::load_dir(&args.known_dir, Path::new("."))?;
     let sink = FindingsSink::new(&args.findings_dir)?;
     Ok(Differential::new(adapters, allowlist, Some(sink)))
+}
+
+/// Like [`build_oracle`] but without a findings sink and without warnings: for commands that
+/// probe many candidate cases (minimizer, report), which must not be recorded as new findings.
+fn build_probe(args: &OracleArgs) -> Result<Differential, String> {
+    let mut adapters = Vec::new();
+    for name in &args.impls {
+        let mut cfg = resolve(name)?;
+        cfg.timeout = Duration::from_millis(args.timeout_ms);
+        let program = cfg.program.display().to_string();
+        adapters.push(Adapter::spawn(cfg).map_err(|e| format!("cannot start {program}: {e}"))?);
+    }
+    let mut diff = Differential::new(adapters, Allowlist::empty(), None);
+    diff.set_quiet(true);
+    Ok(diff)
+}
+
+/// Read a case from a file holding either a bare case or a finding record.
+fn read_case(path: &Path) -> Result<(Case, Option<FindingRecord>), String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    match serde_json::from_str::<FindingRecord>(&text) {
+        Ok(record) => Ok((record.case.clone(), Some(record))),
+        Err(_) => serde_json::from_str(&text)
+            .map(|c| (c, None))
+            .map_err(|e| format!("{}: neither a finding nor a case: {e}", path.display())),
+    }
+}
+
+fn run_one(diff: &mut Differential, case: &Case) -> Vec<diffuzz_types::Verdict> {
+    diff.run_batch(std::slice::from_ref(case))
+        .pop()
+        .map(|r| r.verdicts)
+        .unwrap_or_default()
+}
+
+fn cmd_minimize(args: &MinimizeArgs) -> Result<bool, String> {
+    use diffuzz_triage::bucket::vote_pattern;
+    let (case, _) = read_case(&args.case)?;
+    let mut diff = build_probe(&args.oracle)?;
+    let pattern = vote_pattern(&run_one(&mut diff, &case));
+    println!("preserving: {pattern}");
+    let (min, stats) = diffuzz_minimize::minimize(
+        &case,
+        &mut |c| vote_pattern(&run_one(&mut diff, c)) == pattern,
+        args.max_attempts,
+    );
+    let text = serde_json::to_string_pretty(&min).map_err(|e| e.to_string())?;
+    std::fs::write(&args.out, text).map_err(|e| format!("{}: {e}", args.out.display()))?;
+    println!(
+        "{} -> {} bytes in {} oracle calls ({} accepted, {} rounds); wrote {}",
+        stats.bytes_before,
+        stats.bytes_after,
+        stats.attempts,
+        stats.accepted,
+        stats.rounds,
+        args.out.display()
+    );
+    print!("{}", diffuzz_triage::report::describe_case(&min));
+    Ok(true)
+}
+
+fn cmd_report(args: &ReportArgs) -> Result<bool, String> {
+    use diffuzz_triage::bucket::{Finding, bucketize};
+    // The report quotes undisclosed cases, so it must not land in a tracked path.
+    let out_dir = args
+        .out
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    std::fs::create_dir_all(out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
+    diffuzz_oracle::findings::check_untracked(out_dir)?;
+
+    let mut files = Vec::new();
+    let mut dirs = vec![args.input.clone()];
+    if let Ok(rd) = std::fs::read_dir(&args.input) {
+        dirs.extend(
+            rd.filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.is_dir()),
+        );
+    }
+    for dir in dirs {
+        // Skip our own output and the private allowlist examples.
+        if dir
+            .file_name()
+            .is_some_and(|n| n == "minimized" || n == "known")
+        {
+            continue;
+        }
+        if let Ok(rd) = std::fs::read_dir(&dir) {
+            files.extend(
+                rd.filter_map(|e| e.ok().map(|e| e.path()))
+                    .filter(|p| p.extension().is_some_and(|x| x == "json")),
+            );
+        }
+    }
+    files.sort();
+    let mut findings = Vec::new();
+    for path in &files {
+        if let Ok((_, Some(record))) = read_case(path) {
+            findings.push(Finding {
+                case: record.case,
+                verdicts: record.verdicts,
+                source: path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+            });
+        }
+    }
+    println!(
+        "{} finding file(s) under {}",
+        findings.len(),
+        args.input.display()
+    );
+
+    let mut diff = build_probe(&args.oracle)?;
+    let buckets = bucketize(
+        &findings,
+        &mut |c| run_one(&mut diff, c),
+        args.per_bucket,
+        args.max_attempts,
+    );
+    let min_dir = out_dir.join("minimized");
+    std::fs::create_dir_all(&min_dir).map_err(|e| format!("{}: {e}", min_dir.display()))?;
+    let mut paths = Vec::new();
+    for (i, b) in buckets.iter().enumerate() {
+        let path = min_dir.join(format!("bucket-{:02}.json", i + 1));
+        let text = serde_json::to_string_pretty(&b.representative).map_err(|e| e.to_string())?;
+        std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+        paths.push(path.display().to_string().replace('\\', "/"));
+    }
+    let text = diffuzz_triage::report::render(&buckets, &args.oracle.impls.join(","), &paths);
+    std::fs::write(&args.out, text).map_err(|e| format!("{}: {e}", args.out.display()))?;
+    for (i, b) in buckets.iter().enumerate() {
+        println!("bucket {:>2}: {:>6} finding(s)  {}", i + 1, b.count, b.key);
+    }
+    println!("report written to {}", args.out.display());
+    Ok(true)
+}
+
+fn cmd_export(args: &CheckArgs) -> Result<bool, String> {
+    let (case, _) = read_case(&args.case)?;
+    let mut diff = build_probe(&args.oracle)?;
+    let verdicts = run_one(&mut diff, &case);
+    // The first implementation listed is the reference for "valid" or "invalid".
+    let reference = verdicts.first().ok_or("no implementation answered")?;
+    let valid = reference
+        .outcome
+        .accepted()
+        .ok_or_else(|| format!("{} gave no verdict for this case", reference.impl_name))?;
+    let vector =
+        diffuzz_triage::report::export_tx_vector(&case, valid).ok_or("case cannot be decoded")?;
+    eprintln!(
+        "{} {} this case: format is tx_{}.json",
+        reference.impl_name,
+        if valid { "accepts" } else { "rejects" },
+        if valid { "valid" } else { "invalid" }
+    );
+    if valid {
+        eprintln!(
+            "note: Core's tx_valid test also applies policy flags; run Core's test suite on it."
+        );
+    }
+    println!("{vector}");
+    Ok(true)
 }
 
 fn load_weights(path: &Path) -> Result<Weights, String> {
@@ -358,6 +562,9 @@ fn main() -> ExitCode {
         Command::Fuzz(args) => cmd_fuzz(args),
         Command::Check(args) => cmd_check(args),
         Command::Summarize(args) => cmd_summarize(args),
+        Command::Minimize(args) => cmd_minimize(args),
+        Command::Report(args) => cmd_report(args),
+        Command::ExportCoreVector(args) => cmd_export(args),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
