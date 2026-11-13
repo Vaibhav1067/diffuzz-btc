@@ -270,11 +270,22 @@ pub fn has_nonstrict_der_signature(case: &Case) -> bool {
 /// Names accepted by [`has_feature`].
 pub const FEATURES: [&str; 1] = ["nonstrict-der-signature"];
 
+/// Parse an `opcode:0xNN` feature name.
+fn opcode_feature(name: &str) -> Option<u8> {
+    u8::from_str_radix(name.strip_prefix("opcode:0x")?, 16).ok()
+}
+
+/// Is `name` a feature [`has_feature`] understands? Either one of [`FEATURES`] or
+/// `opcode:0xNN` ("some script of the case contains this non-push opcode").
+pub fn is_known_feature(name: &str) -> bool {
+    FEATURES.contains(&name) || opcode_feature(name).is_some()
+}
+
 /// Evaluate a named case feature (used by allowlist entries). Unknown names are `false`.
 pub fn has_feature(case: &Case, name: &str) -> bool {
     match name {
         "nonstrict-der-signature" => has_nonstrict_der_signature(case),
-        _ => false,
+        _ => opcode_feature(name).is_some_and(|o| opcode_set(case).contains(o)),
     }
 }
 
@@ -434,6 +445,21 @@ mod tests {
         // Pushes and small numbers are not counted.
         let c = case(&[0x51, 0x02, 0xac, 0xac, 0x00, 0x4f, 0x75], &[], vec![]);
         assert_eq!(opcode_set(&c).opcodes(), vec![0x75]);
+    }
+
+    #[test]
+    fn opcode_features() {
+        assert!(has_feature(
+            &case(&[0x51, 0xb0], &[], vec![]),
+            "opcode:0xb0"
+        ));
+        assert!(!has_feature(
+            &case(&[0x51, 0xb1], &[], vec![]),
+            "opcode:0xb0"
+        ));
+        assert!(is_known_feature("opcode:0xff") && is_known_feature("nonstrict-der-signature"));
+        assert!(!is_known_feature("opcode:zz") && !is_known_feature("opcode:0x100"));
+        assert!(!is_known_feature("made-up"));
     }
 
     #[test]

@@ -10,6 +10,7 @@ implementation's flags. This table must be updated whenever an adapter changes. 
 |---|---|---|---|
 | `core` | Bitcoin Core `libbitcoinconsensus` | Core **26.0**, via crate `bitcoinconsensus = "=0.106.0"` (`0.106.0+26.0`) | `adapters/core-rs/Cargo.toml`, `Cargo.lock` |
 | `btcd` | btcd `txscript` | `github.com/btcsuite/btcd/txscript/v2` **v2.0.1**, `wire/v2` v2.0.2 | `adapters/btcd-go/go.mod`, `go.sum` |
+| `nbitcoin` | NBitcoin `ScriptEvaluationContext` | NuGet `NBitcoin` **10.0.21** (exact pin) on .NET 10 | `adapters/nbitcoin-cs/diffuzz-adapter-nbitcoin.csproj` |
 
 ## Consensus flags (used by the main oracle)
 
@@ -25,6 +26,9 @@ implementation's flags. This table must be updated whenever an adapter changes. 
 
 The btcd names were taken from btcd's own vector harness (`parseScriptFlags` in
 `txscript/reference_test.go`), which maps Core's vector flag names the same way.
+
+NBitcoin's `ScriptVerify` enum uses Core's names directly: `P2SH`, `DerSig`, `NullDummy`,
+`CheckLockTimeVerify`, `CheckSequenceVerify`, `Witness`, `Taproot`.
 
 ## Policy flags (never used by the main oracle)
 
@@ -115,9 +119,31 @@ btcd error codes map to error classes one-to-one where Core has an equivalent `S
 | `ErrNonConstScriptCode`, `ErrCodeSeparator` | `OP_CODESEPARATOR` |
 | unmapped codes (`ErrScriptUnfinished`, `ErrInvalidProgramCounter`, ...) | `UNKNOWN` |
 
+## NBitcoin adapter (`adapters/nbitcoin-cs`)
+
+**Why NBitcoin and not libbitcoin.** The plan named libbitcoin-system as the third oracle.
+Building it needs Boost, ICU and libsecp256k1 from source and a C++ toolchain setup that is not
+reproducible on the Windows development machine without a long container build, and its
+script-verification API differs between the released v3 line (no taproot) and the unreleased
+v4 line. NBitcoin was substituted: it is a separately maintained C# implementation with
+taproot support, installs as one pinned NuGet package, and builds in seconds on Linux and
+Windows. Its interpreter follows the structure of Core's `interpreter.cpp`, so it is less
+independent than btcd's from-scratch design; what it adds is a third codebase whose
+translation and maintenance errors are its own. A libbitcoin adapter remains open work.
+
+- The transaction is decoded with `Transaction.Load`; if it does not re-serialize to the same
+  number of bytes the request is rejected as `DESERIALIZE`.
+- Spent outputs are passed by position through `Transaction.PrecomputeTransactionData(TxOut[])`,
+  so taproot is supported and duplicate outpoints need no special handling.
+- `ScriptError` names equal Core's, so the error class is the same name in upper snake case;
+  anything unmatched is `UNKNOWN`.
+- Any exception thrown during verification is reported as `error_class: "CRASH"`.
+- There is no `DISCOURAGE_UPGRADABLE_PUBKEYTYPE` flag in this version; the adapter answers
+  `INVALID_FLAGS` for it (policy mode only).
+
 ## Shared request validation
 
-Both adapters reject, before or instead of running a script:
+Every adapter rejects, before or instead of running a script:
 
 | Condition | `error_class` |
 |---|---|

@@ -8,7 +8,7 @@ regression test: re-run it after any adapter, loader or generator change.
 scripts/build_adapters.sh --release
 cargo run --release -p diffuzz-cli -- replay \
   --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json \
-  --impls core,btcd
+  --impls core,btcd,nbitcoin
 ```
 
 Vectors: Bitcoin Core v32.1 (`f0de87f0`), see `vectors/SOURCES.md`.
@@ -30,13 +30,14 @@ invalid one needs at least one input rejected.
 |---|---|---:|---:|---:|---:|
 | `core` | libbitcoinconsensus 26.0 (`bitcoinconsensus` 0.106.0+26.0) | 963 / 963 | 0 | 0 | 0 |
 | `btcd` | txscript/v2 v2.0.1 | 963 / 963 | 0 | 0 | 0 |
+| `nbitcoin` | NBitcoin 10.0.21 | 963 / 963 | 0 | 0 | 0 |
 
 No mismatches, so nothing needed to be classified as an adapter bug, an unsupported feature or
 an implementation difference, and `known_divergences/` is empty.
 
 ## Differential result
 
-The same replay compares the implementations with each other (`ok` only):
+The same replay compares the three implementations with each other (`ok` only):
 
 | File | Cases | AGREE_OK | AGREE_FAIL | KNOWN | HARD_DIVERGE | CRASH | TIMEOUT |
 |---|---:|---:|---:|---:|---:|---:|---:|

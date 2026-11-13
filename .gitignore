@@ -32,3 +32,7 @@ target/
 Thumbs.db
 desktop.ini
 .claude/
+
+# .NET adapter build output
+/adapters/nbitcoin-cs/bin/
+/adapters/nbitcoin-cs/obj/

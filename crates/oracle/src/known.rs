@@ -61,7 +61,7 @@ pub struct KnownDivergence {
     /// Flags that must all be *absent* from the case for the entry to apply.
     #[serde(default)]
     pub flags_absent: Vec<Flag>,
-    /// Named structural features the case must have (see `diffuzz_triage::features::FEATURES`).
+    /// Named structural features the case must have (see `diffuzz_triage::features::has_feature`).
     #[serde(default)]
     pub case_features: Vec<String>,
     /// Path (relative to the repository root) of a minimal example case.
@@ -98,7 +98,7 @@ impl KnownDivergence {
         if let Some(bad) = self
             .case_features
             .iter()
-            .find(|f| !diffuzz_triage::features::FEATURES.contains(&f.as_str()))
+            .find(|f| !diffuzz_triage::features::is_known_feature(f))
         {
             return Err(format!("{}: unknown case feature {bad:?}", self.id));
         }
