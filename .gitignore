@@ -1,0 +1,34 @@
+# Rule 2: unreviewed findings never enter git.
+/findings/private/
+
+# Rust
+target/
+
+# Adapter build output
+/adapters/btcd-go/bin/
+/adapters/btcd-go/btcd-adapter
+/adapters/btcd-go/btcd-adapter.exe
+/adapters/libbitcoin-cpp/build/
+/adapters/**/*.exe
+
+# Fuzzing artifacts
+/fuzz/artifacts/
+/fuzz/corpus/
+/fuzz/coverage/
+/fuzz/target/
+
+# Generated cases, logs, run output
+/out/
+/logs/
+*.log
+
+# Large or temporary vector downloads (the pinned seed vectors themselves are tracked)
+/vectors/cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/
