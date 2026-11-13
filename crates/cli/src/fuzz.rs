@@ -17,7 +17,7 @@ use diffuzz_oracle::diff::Class;
 use diffuzz_oracle::runner::{CaseResult, Differential};
 use diffuzz_triage::features::{OpcodeSet, opcode_set, wrapper_type};
 use diffuzz_types::{Case, Outcome};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Cases per batch sent to each adapter.
 pub const BATCH: usize = 256;
@@ -52,7 +52,7 @@ pub struct FuzzConfig {
 type Signature = (String, OpcodeSet, &'static str);
 
 /// Per-adapter totals in the summary.
-#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct AdapterSummary {
     /// Implementation name.
     pub name: String,
@@ -71,7 +71,7 @@ pub struct AdapterSummary {
 }
 
 /// The machine-readable result of a fuzz run.
-#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct Summary {
     /// Base seed.
     pub seed: u64,
@@ -483,6 +483,65 @@ pub fn render(s: &Summary) -> String {
     o
 }
 
+fn add_map(into: &mut BTreeMap<String, u64>, from: &BTreeMap<String, u64>) {
+    for (k, v) in from {
+        *into.entry(k.clone()).or_insert(0) += v;
+    }
+}
+
+/// Combine the summaries of consecutive run segments into one.
+///
+/// Counts and durations add up. `signatures` and `kept` cannot be unioned across processes,
+/// so the merged value is the largest single segment, a lower bound on the true total.
+pub fn merge(parts: &[Summary]) -> Summary {
+    let mut out = Summary::default();
+    let Some(first) = parts.first() else {
+        return out;
+    };
+    out.seed = first.seed;
+    out.started_unix = parts.iter().map(|p| p.started_unix).min().unwrap_or(0);
+    out.workers = first.workers;
+    out.feedback = first.feedback;
+    out.adapters = first.adapters.clone();
+    for a in &mut out.adapters {
+        a.cases = 0;
+        a.restarts = 0;
+    }
+    for p in parts {
+        out.duration_secs += p.duration_secs;
+        out.cases += p.cases;
+        out.findings_written += p.findings_written;
+        out.signatures = out.signatures.max(p.signatures);
+        out.kept = out.kept.max(p.kept);
+        add_map(&mut out.classes, &p.classes);
+        add_map(&mut out.known, &p.known);
+        add_map(&mut out.wrappers, &p.wrappers);
+        for (k, v) in &p.error_classes {
+            add_map(out.error_classes.entry(k.clone()).or_default(), v);
+        }
+        for (k, v) in &p.by_category {
+            add_map(out.by_category.entry(k.clone()).or_default(), v);
+        }
+        for a in &mut out.adapters {
+            if let Some(pa) = p.adapters.iter().find(|x| x.name == a.name) {
+                a.cases += pa.cases;
+                a.restarts += pa.restarts;
+            }
+        }
+    }
+    out.cases_per_sec = if out.duration_secs > 0.0 {
+        out.cases as f64 / out.duration_secs
+    } else {
+        0.0
+    };
+    out.stop_reason = format!(
+        "{} segment(s); last: {}",
+        parts.len(),
+        parts.last().map(|p| p.stop_reason.as_str()).unwrap_or("")
+    );
+    out
+}
+
 fn pct(n: u64, total: u64) -> f64 {
     if total == 0 {
         0.0
@@ -620,6 +679,43 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         assert!(json.contains("\"cases\":200"));
         assert_eq!(pct(1, 0), 0.0);
+    }
+
+    #[test]
+    fn merging_adds_counts() {
+        let mut a = Summary {
+            seed: 1,
+            cases: 100,
+            duration_secs: 10.0,
+            signatures: 5,
+            ..Summary::default()
+        };
+        a.classes.insert("AGREE_OK".into(), 100);
+        a.error_classes
+            .entry("btcd".into())
+            .or_default()
+            .insert("OK".into(), 100);
+        a.adapters.push(AdapterSummary {
+            name: "btcd".into(),
+            cases: 100,
+            ..AdapterSummary::default()
+        });
+        let mut b = a.clone();
+        b.cases = 300;
+        b.duration_secs = 30.0;
+        b.signatures = 9;
+        b.classes.insert("AGREE_FAIL".into(), 200);
+        b.stop_reason = "duration elapsed".into();
+        let m = merge(&[a, b]);
+        assert_eq!(m.cases, 400);
+        assert_eq!(m.cases_per_sec, 10.0);
+        assert_eq!(m.classes["AGREE_OK"], 200);
+        assert_eq!(m.classes["AGREE_FAIL"], 200);
+        assert_eq!(m.error_classes["btcd"]["OK"], 200);
+        assert_eq!(m.signatures, 9);
+        assert_eq!(m.adapters[0].cases, 200);
+        assert!(m.stop_reason.starts_with("2 segment(s)"));
+        assert_eq!(merge(&[]), Summary::default());
     }
 
     #[test]

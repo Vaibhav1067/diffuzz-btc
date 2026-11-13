@@ -40,6 +40,8 @@ enum Command {
     Fuzz(FuzzArgs),
     /// Run one saved case (or finding) through the adapters and print every verdict.
     Check(CheckArgs),
+    /// Merge the summary files of several fuzz segments into one.
+    Summarize(SummarizeArgs),
 }
 
 /// Options shared by every command that runs the differential oracle.
@@ -127,6 +129,16 @@ struct FuzzArgs {
     /// Seconds between progress lines.
     #[arg(long, default_value_t = 10)]
     report_secs: u64,
+}
+
+#[derive(Args)]
+struct SummarizeArgs {
+    /// Segment summary files written by `fuzz --summary`.
+    #[arg(long = "in", required = true, num_args = 1..)]
+    inputs: Vec<PathBuf>,
+    /// Where to write the merged summary.
+    #[arg(long)]
+    out: PathBuf,
 }
 
 #[derive(Args)]
@@ -318,6 +330,26 @@ fn cmd_check(args: &CheckArgs) -> Result<bool, String> {
     Ok(!result.class.is_finding())
 }
 
+fn cmd_summarize(args: &SummarizeArgs) -> Result<bool, String> {
+    let mut parts = Vec::new();
+    for path in &args.inputs {
+        let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let part: fuzz::Summary =
+            serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+        parts.push(part);
+    }
+    let merged = fuzz::merge(&parts);
+    let text = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
+    std::fs::write(&args.out, text).map_err(|e| format!("{}: {e}", args.out.display()))?;
+    print!("{}", fuzz::render(&merged));
+    println!(
+        "merged {} segment(s) into {}",
+        parts.len(),
+        args.out.display()
+    );
+    Ok(true)
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match &cli.command {
@@ -325,6 +357,7 @@ fn main() -> ExitCode {
         Command::Gen(args) => cmd_gen(args),
         Command::Fuzz(args) => cmd_fuzz(args),
         Command::Check(args) => cmd_check(args),
+        Command::Summarize(args) => cmd_summarize(args),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
