@@ -171,8 +171,12 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "diffuzz-corpus",
+ "diffuzz-gen",
  "diffuzz-oracle",
+ "diffuzz-triage",
  "diffuzz-types",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -186,6 +190,16 @@ dependencies = [
 [[package]]
 name = "diffuzz-gen"
 version = "0.1.0"
+dependencies = [
+ "diffuzz-adapter-core",
+ "diffuzz-types",
+ "ripemd",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
+]
 
 [[package]]
 name = "diffuzz-minimize"
@@ -204,6 +218,9 @@ dependencies = [
 [[package]]
 name = "diffuzz-triage"
 version = "0.1.0"
+dependencies = [
+ "diffuzz-types",
+]
 
 [[package]]
 name = "diffuzz-types"
@@ -371,6 +388,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "ripemd"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dd4211456b4172d7e44261920c25acf07367c4f04bb5f5d54fc21b090d9b159"
+dependencies = [
+ "digest",
 ]
 
 [[package]]

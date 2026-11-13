@@ -1,0 +1,9 @@
+# Relative weights of the case generators used by `diffuzz gen` and `diffuzz fuzz`.
+# Only the ratios matter. A missing key keeps its default. See docs/generators.md.
+
+[weights]
+script = 30    # stack-aware random scripts and interpreter-limit cases
+sig = 25       # CHECKSIG / CHECKMULTISIG, hash types, DER and pubkey encodings
+wrapper = 10   # P2SH and witness-program shapes, malleation, size limits
+taproot = 25   # key path, script path, tapscript rules
+mutate = 10    # mutations of corpus vectors and kept cases

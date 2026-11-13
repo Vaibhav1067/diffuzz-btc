@@ -9,3 +9,15 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+diffuzz-types = { path = "../types" }
+secp256k1 = "0.33.1"
+sha2 = "0.11.1"
+ripemd = "0.2.0"
+toml = "1.2.1"
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0.154"
+diffuzz-adapter-core = { path = "../../adapters/core-rs" }
