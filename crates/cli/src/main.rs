@@ -135,6 +135,9 @@ struct FuzzArgs {
     /// Seconds between progress lines.
     #[arg(long, default_value_t = 10)]
     report_secs: u64,
+    /// Consensus flags to force onto every case, comma separated (e.g. `DERSIG`).
+    #[arg(long, value_delimiter = ',', value_parser = parse_flag)]
+    require_flags: Vec<diffuzz_types::Flag>,
 }
 
 #[derive(Args)]
@@ -187,6 +190,16 @@ struct CheckArgs {
     case: PathBuf,
     #[command(flatten)]
     oracle: OracleArgs,
+}
+
+fn parse_flag(s: &str) -> Result<diffuzz_types::Flag, String> {
+    match diffuzz_types::Flag::from_name(s) {
+        Some(f) if f.is_consensus() => Ok(f),
+        Some(_) => Err(format!(
+            "{s} is a policy flag; the oracle is consensus-only"
+        )),
+        None => Err(format!("unknown flag {s:?}")),
+    }
 }
 
 /// Parse `90`, `90s`, `30m` or `2h` into a duration.
@@ -471,6 +484,7 @@ fn cmd_fuzz(args: &FuzzArgs) -> Result<bool, String> {
         stop_on_divergence: !args.keep_going,
         max_findings: args.max_findings,
         report_every: Duration::from_secs(args.report_secs.max(1)),
+        required_flags: args.require_flags.clone(),
     };
     eprintln!(
         "fuzz: seed {} workers {} impls {} mutation seeds {}",
@@ -589,6 +603,9 @@ mod tests {
         assert!(parse_duration("1d").is_err());
         assert!(parse_duration("h").is_err());
         assert!(parse_duration("").is_err());
+        assert_eq!(parse_flag("DERSIG"), Ok(diffuzz_types::Flag::Dersig));
+        assert!(parse_flag("LOW_S").unwrap_err().contains("policy"));
+        assert!(parse_flag("nope").is_err());
     }
 
     #[test]

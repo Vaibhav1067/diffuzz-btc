@@ -46,6 +46,8 @@ pub struct FuzzConfig {
     pub max_findings: u64,
     /// Print progress this often.
     pub report_every: Duration,
+    /// Flags forced onto every case (e.g. DERSIG to fuzz only post-BIP66 rules).
+    pub required_flags: Vec<diffuzz_types::Flag>,
 }
 
 /// The feedback tuple.
@@ -281,6 +283,15 @@ where
                         batch.push(mix.generate(&mut rng));
                     }
 
+                    if !cfg.required_flags.is_empty() {
+                        for case in &mut batch {
+                            case.flags.extend(cfg.required_flags.iter().copied());
+                            if case.flags.contains(&diffuzz_types::Flag::Witness) {
+                                case.flags.push(diffuzz_types::Flag::P2sh);
+                            }
+                            diffuzz_types::normalize_flags(&mut case.flags);
+                        }
+                    }
                     let results = diff.run_batch(&batch);
                     for r in &results {
                         for (i, v) in r.verdicts.iter().enumerate() {
