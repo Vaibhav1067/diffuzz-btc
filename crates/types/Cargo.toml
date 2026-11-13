@@ -1,0 +1,11 @@
+[package]
+name = "diffuzz-types"
+description = "Case, Flag, Prevout, Verdict and wire-protocol types"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

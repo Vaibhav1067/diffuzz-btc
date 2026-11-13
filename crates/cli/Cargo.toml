@@ -1,0 +1,15 @@
+[package]
+name = "diffuzz-cli"
+description = "The diffuzz command-line binary"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "diffuzz"
+path = "src/main.rs"
