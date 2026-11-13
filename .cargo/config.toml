@@ -1,0 +1,11 @@
+# Build fixes for the bitcoinconsensus crate on Windows/MSVC. They are target-scoped, so other
+# platforms are unaffected, and they change no consensus code:
+#
+# * SECP256K1_STATIC: the crate links its bundled libsecp256k1 statically but does not say so;
+#   on MSVC the secp256k1 headers then default to __declspec(dllimport) and the link fails.
+# * ENABLE_MODULE_ELLSWIFT: Core 26.0's pubkey.cpp references secp256k1_ellswift_decode (BIP324,
+#   never reached from script verification). GNU-style linkers drop the unused function; MSVC
+#   needs the symbol to exist, so compile that secp256k1 module in.
+[env]
+CFLAGS_x86_64_pc_windows_msvc = "/DSECP256K1_STATIC /DENABLE_MODULE_ELLSWIFT=1"
+CXXFLAGS_x86_64_pc_windows_msvc = "/DSECP256K1_STATIC"

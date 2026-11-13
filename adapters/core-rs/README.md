@@ -1,3 +1,6 @@
 # core-rs adapter
 
-Rust adapter around Bitcoin Core's consensus code. Built in Phase 1; the binding choice and version pin will be recorded in `docs/flag-mapping.md`.
+Rust adapter around Bitcoin Core's `libbitcoinconsensus` (Core 26.0), built from source by the
+`bitcoinconsensus` crate pinned in `Cargo.toml`. Binary: `diffuzz-adapter-core`.
+
+Binding choice, flag mapping and limits: `docs/flag-mapping.md`.
