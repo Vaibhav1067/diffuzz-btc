@@ -60,6 +60,12 @@ public static class AuxOps
         catch (FormatException) { throw new InvalidDataException("tx_hex is not valid hex"); }
         Transaction tx;
         try { tx = Transaction.Load(raw, Network.Main); }
+        catch (Exception e) when (e.Message.Contains("long.MinValue"))
+        {
+            // NBitcoin's Money cannot hold an output value of long.MinValue; Core's deserializer
+            // reads any int64 (and rejects negative values later, in CheckTransaction).
+            throw new NotSupportedException("Money cannot represent long.MinValue");
+        }
         catch (Exception e) { throw new InvalidDataException("tx decode: " + e.Message); }
         if (tx.ToBytes().Length != raw.Length)
             throw new InvalidDataException("transaction does not re-serialize to the same length");
@@ -206,6 +212,10 @@ public static class AuxOps
                     resp.Error = "unknown op " + req.Op;
                     break;
             }
+        }
+        catch (NotSupportedException e)
+        {
+            resp = new AuxResponse { Id = req.Id, Unsupported = true, Error = e.Message };
         }
         catch (InvalidDataException e)
         {

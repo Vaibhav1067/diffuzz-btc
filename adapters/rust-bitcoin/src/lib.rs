@@ -81,6 +81,12 @@ enum Done {
 
 fn txinfo(tx_hex: &str) -> Done {
     match decode_tx(tx_hex) {
+        // Documented design (`Transaction` docs, "to avoid deserialization ambiguity"): 0-input
+        // transactions use BIP141 serialization, so the decoder accepts a witness flag with no
+        // inputs, which Core rejects as a superfluous witness record. Not comparable.
+        Ok(tx) if tx.input.is_empty() => Done::Unsupported(
+            "rust-bitcoin serializes 0-input transactions in BIP141 format by design".into(),
+        ),
         Ok(tx) => Done::Ok(AuxResponse {
             ok: true,
             txid: Some(hex::encode(&tx.compute_txid().to_byte_array())),
@@ -108,6 +114,11 @@ fn sighash(
 ) -> Result<Done, String> {
     let tx = decode_tx(tx_hex)?;
     let idx = input_index as usize;
+    // taproot_encode_signing_data_to (0.32.102 and master 271f662a) checks the index only for
+    // ANYONECANPAY, so the adapter checks it for every kind.
+    if idx >= tx.input.len() {
+        return Err("input index out of range".into());
+    }
     let script = decode_hex("script_hex", script_hex)?;
     let cache = SighashCache::new(&tx);
     let digest: [u8; 32] = match kind {
@@ -288,6 +299,10 @@ mod tests {
             r#"{{"id":2,"op":"txinfo","tx_hex":"{SPENDING}00"}}"#
         ));
         assert!(!r.ok && !r.unsupported);
+        // version, marker+flag, 0 inputs, 1 output (0 sats, empty script), locktime.
+        let zero_in = "020000000001000100000000000000000000000000";
+        let r = parse(&format!(r#"{{"id":3,"op":"txinfo","tx_hex":"{zero_in}"}}"#));
+        assert!(r.unsupported, "{r:?}");
     }
 
     #[test]
@@ -306,6 +321,9 @@ mod tests {
         let r = parse(&req("bip143", 0x41));
         assert!(!r.ok && r.unsupported, "{r:?}");
         assert!(parse(&req("bip341", 0)).ok);
+        let oob = req("bip341", 0).replace(r#""input_index":0"#, r#""input_index":1"#);
+        let r = parse(&oob);
+        assert!(!r.ok && !r.unsupported, "out-of-range index: {r:?}");
         let r = parse(&req("bip341", 4));
         assert!(
             !r.ok && !r.unsupported,

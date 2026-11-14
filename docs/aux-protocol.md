@@ -16,9 +16,9 @@ A field one implementation does not report (NBitcoin reports no `weight`) is not
 
 | impl | txinfo | legacy | bip143 | bip341 | notes |
 |------|--------|--------|--------|--------|-------|
-| `rust-bitcoin` (0.32.102) | yes | yes | canonical hash types only | yes | the library leaves `OP_CODESEPARATOR` removal to the caller; the adapter strips them as Core's `SerializeScriptCode` does. `p2wsh_signature_hash` hashes the normalized hash type, so non-canonical values abstain. |
+| `rust-bitcoin` (0.32.102) | yes | yes | canonical hash types only | yes | the library leaves `OP_CODESEPARATOR` removal to the caller; the adapter strips them as Core's `SerializeScriptCode` does. `p2wsh_signature_hash` hashes the normalized hash type, so non-canonical values abstain. Zero-input transactions abstain on `txinfo` (BIP141 serialization by design). The adapter bounds-checks `input_index`, which the library skips for non-ANYONECANPAY BIP341. |
 | `btcd` (txscript v2.0.1) | yes | parsable scripts only | yes | key path without annex; script path (base leaf) | `CalcSignatureHash` refuses unparsable scriptCode, where Core hashes the bytes. btcd keys prevouts by outpoint, so duplicate outpoints abstain. `NewTxSigHashes` skips the taproot midstate when no prevout is P2TR, so such BIP341 requests abstain. |
-| `nbitcoin` | yes (no weight) | parsable scripts only | parsable scripts only | yes | `GetSignatureHash` parses the scriptCode into ops and throws on truncated pushes, where Core hashes the bytes. |
+| `nbitcoin` | yes (no weight) | parsable scripts only | parsable scripts only | yes | `GetSignatureHash` parses the scriptCode into ops and throws on truncated pushes, where Core hashes the bytes. `Money` cannot hold an output value of `long.MinValue`, so such transactions abstain on `txinfo` (Core decodes them and rejects them later as `bad-txns-vout-negative`). |
 | `core` (libbitcoinconsensus 26.0) | no | no | no | no | the library exposes only script verification; always abstains. |
 
 For a BIP341 script-path request, send both `script_hex` (the leaf script, leaf version 0xc0)
@@ -41,8 +41,13 @@ take the given hash.
 Cross-implementation disagreements, crashes and timeouts are written to `findings/private/`
 (`aux_diverge-*.json`, `aux_crash-*.json`) and only counted on stdout.
 
-Result on 2026-11-14: 1140 checks, all three answering implementations agree on every check and
-meet every expected digest; Core abstains on all.
+Results on 2026-11-14:
+
+* Upstream vectors: 1140 checks; rust-bitcoin, btcd and NBitcoin agree on every check and meet
+  every expected digest; Core abstains on all.
+* Generated: seeds 1, 2 and 3 with `--count 100000` each (300k checks): no divergence, crash or
+  timeout after the adapter preconditions above. Triage found no implementation bug relevant to
+  consensus. CI runs seed 1 with 20k generated checks.
 
 ## Building on Windows inside OneDrive
 
