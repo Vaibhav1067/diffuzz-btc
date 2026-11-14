@@ -20,9 +20,17 @@ esac
 echo "building core adapter (Rust, libbitcoinconsensus 26.0)" >&2
 (cd "$ROOT" && cargo build $PROFILE_FLAG -p diffuzz-adapter-core)
 
+echo "building rust-bitcoin aux adapter (Rust, bitcoin 0.32.102)" >&2
+(cd "$ROOT" && cargo build $PROFILE_FLAG -p diffuzz-adapter-rust-bitcoin)
+
 echo "building btcd adapter (Go)" >&2
 mkdir -p "$ROOT/target/adapters"
-(cd "$ROOT/adapters/btcd-go" && go build -trimpath -o "$ROOT/target/adapters/diffuzz-adapter-btcd$EXE" .)
+# Build from a temporary copy: inside a OneDrive-synced folder every file is a reparse point,
+# which the Go loader rejects ("cannot find package"). -trimpath keeps the output identical.
+GO_SRC="$(mktemp -d)"
+trap 'rm -rf "$GO_SRC"' EXIT
+cp "$ROOT"/adapters/btcd-go/*.go "$ROOT"/adapters/btcd-go/go.mod "$ROOT"/adapters/btcd-go/go.sum "$GO_SRC"/
+(cd "$GO_SRC" && go build -trimpath -o "$ROOT/target/adapters/diffuzz-adapter-btcd$EXE" .)
 
 if command -v dotnet > /dev/null 2>&1; then
     echo "building nbitcoin adapter (.NET)" >&2

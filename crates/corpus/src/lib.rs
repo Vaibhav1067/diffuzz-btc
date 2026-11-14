@@ -18,6 +18,7 @@ use std::fmt;
 use diffuzz_types::Case;
 
 pub mod asm;
+pub mod bip341;
 pub mod script_tests;
 pub mod sighash;
 pub mod tx_tests;

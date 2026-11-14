@@ -41,6 +41,12 @@ jobs:
           cargo run --locked -p diffuzz-cli -- replay
           --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json
           --impls core,btcd,nbitcoin
+      # Secondary surface: legacy (sighash.json) and BIP341 key-path digests against their
+      # expected values, and a decode of every vector transaction, compared across implementations.
+      - name: Sighash and tx-decode differential
+        run: >
+          cargo run --locked -p diffuzz-cli -- aux
+          --impls rust-bitcoin,btcd,nbitcoin,core
       # Smoke test of the whole fuzz loop. BIP66 (DERSIG) is forced on, as it is for every
       # block since 2015; the pre-BIP66 signature rules are fuzzed in dedicated runs.
       - name: Smoke fuzz (60 s)

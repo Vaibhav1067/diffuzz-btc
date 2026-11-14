@@ -16,6 +16,7 @@ use diffuzz_oracle::resolve::resolve;
 use diffuzz_oracle::runner::Differential;
 use diffuzz_types::Case;
 
+mod auxcmd;
 mod fuzz;
 mod replay;
 
@@ -48,6 +49,30 @@ enum Command {
     Report(ReportArgs),
     /// Print a case in Bitcoin Core's tx_valid.json / tx_invalid.json vector format.
     ExportCoreVector(CheckArgs),
+    /// Secondary surface: tx decoding and sighash differential over upstream vectors.
+    Aux(AuxArgs),
+}
+
+#[derive(Args)]
+struct AuxArgs {
+    /// Implementations to run, comma separated (e.g. `rust-bitcoin,btcd,nbitcoin`).
+    #[arg(long = "impls", alias = "impl", required = true, value_delimiter = ',')]
+    impls: Vec<String>,
+    /// Per-request timeout in milliseconds.
+    #[arg(long, default_value_t = 10_000)]
+    timeout_ms: u64,
+    /// Directory with Core's sighash.json, tx_valid.json and tx_invalid.json.
+    #[arg(long, default_value = "vectors/core")]
+    core_vectors: PathBuf,
+    /// BIP341 wallet test vectors.
+    #[arg(long, default_value = "vectors/bip341/wallet-test-vectors.json")]
+    bip341_vectors: PathBuf,
+    /// Private directory for divergences, crashes and timeouts. Must be git-ignored.
+    #[arg(long, default_value = "findings/private")]
+    findings_dir: PathBuf,
+    /// Maximum wrong-digest checks listed per implementation.
+    #[arg(long, default_value_t = 20)]
+    max_listed: usize,
 }
 
 /// Options shared by every command that runs the differential oracle.
@@ -568,6 +593,31 @@ fn cmd_summarize(args: &SummarizeArgs) -> Result<bool, String> {
     Ok(true)
 }
 
+fn cmd_aux(args: &AuxArgs) -> Result<bool, String> {
+    let checks = auxcmd::build_checks(&args.core_vectors, &args.bip341_vectors)?;
+    let mut adapters = Vec::new();
+    for name in &args.impls {
+        let mut cfg = resolve(name)?;
+        cfg.timeout = Duration::from_millis(args.timeout_ms);
+        let program = cfg.program.display().to_string();
+        adapters.push(Adapter::spawn(cfg).map_err(|e| format!("cannot start {program}: {e}"))?);
+    }
+    std::fs::create_dir_all(&args.findings_dir)
+        .map_err(|e| format!("{}: {e}", args.findings_dir.display()))?;
+    let report = auxcmd::run(&checks, &mut adapters, &args.findings_dir)?;
+    print!("{}", auxcmd::render(&report, args.max_listed));
+    let clean = report.clean();
+    println!(
+        "{}",
+        if clean {
+            "RESULT: clean"
+        } else {
+            "RESULT: MISMATCHES OR FINDINGS"
+        }
+    );
+    Ok(clean)
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match &cli.command {
@@ -579,6 +629,7 @@ fn main() -> ExitCode {
         Command::Minimize(args) => cmd_minimize(args),
         Command::Report(args) => cmd_report(args),
         Command::ExportCoreVector(args) => cmd_export(args),
+        Command::Aux(args) => cmd_aux(args),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
