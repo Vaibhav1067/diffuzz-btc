@@ -123,6 +123,25 @@ pub fn build_checks(core_dir: &Path, bip341_file: &Path) -> Result<Vec<AuxCheck>
     Ok(checks)
 }
 
+/// `count` generated checks from `seed`, using the `txinfo` transactions of `vectors` as
+/// mutation donors. Named `gen:<seed>:<n>` so any one can be regenerated.
+pub fn generated_checks(vectors: &[AuxCheck], seed: u64, count: u64) -> Vec<AuxCheck> {
+    let donors: Vec<String> = vectors
+        .iter()
+        .filter_map(|c| match &c.op {
+            AuxOp::Txinfo { tx_hex } => Some(tx_hex.clone()),
+            AuxOp::Sighash { .. } => None,
+        })
+        .collect();
+    (0..count)
+        .map(|n| AuxCheck {
+            name: format!("gen:{seed}:{n}"),
+            op: diffuzz_gen::auxgen::aux_op(seed, n, &donors),
+            expected_digest: None,
+        })
+        .collect()
+}
+
 /// How one implementation did on one check.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImplStatus {

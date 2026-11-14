@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod auxgen;
 pub mod generators;
 pub mod keys;
 pub mod rng;

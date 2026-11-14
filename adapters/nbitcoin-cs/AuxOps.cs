@@ -99,7 +99,17 @@ public static class AuxOps
             {
                 var spent = new TxOut(Money.Satoshis((long)req.AmountSats), script);
                 var version = req.Kind == "legacy" ? HashVersion.Original : HashVersion.WitnessV0;
-                digest = tx.GetSignatureHash(script, index, (SigHash)req.HashType, spent, version);
+                try
+                {
+                    digest = tx.GetSignatureHash(script, index, (SigHash)req.HashType, spent, version);
+                }
+                catch (EndOfStreamException)
+                {
+                    // NBitcoin parses the scriptCode into ops; Core hashes unparsable bytes as-is.
+                    resp.Unsupported = true;
+                    resp.Error = "GetSignatureHash cannot parse this scriptCode";
+                    return;
+                }
                 break;
             }
             case "bip341":

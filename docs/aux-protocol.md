@@ -17,8 +17,8 @@ A field one implementation does not report (NBitcoin reports no `weight`) is not
 | impl | txinfo | legacy | bip143 | bip341 | notes |
 |------|--------|--------|--------|--------|-------|
 | `rust-bitcoin` (0.32.102) | yes | yes | canonical hash types only | yes | the library leaves `OP_CODESEPARATOR` removal to the caller; the adapter strips them as Core's `SerializeScriptCode` does. `p2wsh_signature_hash` hashes the normalized hash type, so non-canonical values abstain. |
-| `btcd` (txscript v2.0.1) | yes | parsable scripts only | yes | key path without annex; script path (base leaf) | `CalcSignatureHash` refuses unparsable scriptCode, where Core hashes the bytes. btcd keys prevouts by outpoint, so duplicate outpoints abstain. |
-| `nbitcoin` | yes (no weight) | yes | yes | yes | |
+| `btcd` (txscript v2.0.1) | yes | parsable scripts only | yes | key path without annex; script path (base leaf) | `CalcSignatureHash` refuses unparsable scriptCode, where Core hashes the bytes. btcd keys prevouts by outpoint, so duplicate outpoints abstain. `NewTxSigHashes` skips the taproot midstate when no prevout is P2TR, so such BIP341 requests abstain. |
+| `nbitcoin` | yes (no weight) | parsable scripts only | parsable scripts only | yes | `GetSignatureHash` parses the scriptCode into ops and throws on truncated pushes, where Core hashes the bytes. |
 | `core` (libbitcoinconsensus 26.0) | no | no | no | no | the library exposes only script verification; always abstains. |
 
 For a BIP341 script-path request, send both `script_hex` (the leaf script, leaf version 0xc0)
@@ -31,6 +31,12 @@ take the given hash.
 * BIP341 `wallet-test-vectors.json`: key-path digests with the expected value (7 vectors).
 * `txinfo` on every distinct transaction in the files above plus `tx_valid.json` and
   `tx_invalid.json`.
+
+* With `--seed S --count N`: N generated operations (`crates/gen/src/auxgen.rs`): byte-mutated
+  and freshly built transactions for `txinfo`, and legacy / BIP143 / BIP341 key-path and
+  script-path requests with annexes, undefined hash types, `SIGHASH_SINGLE` without a matching
+  output, out-of-range input indexes and unparsable scriptCodes. Each is named `gen:S:n` and can
+  be regenerated from `(S, n)`.
 
 Cross-implementation disagreements, crashes and timeouts are written to `findings/private/`
 (`aux_diverge-*.json`, `aux_crash-*.json`) and only counted on stdout.

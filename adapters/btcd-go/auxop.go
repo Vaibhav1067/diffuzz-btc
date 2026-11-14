@@ -147,6 +147,17 @@ func sighash(req *auxRequest, resp *auxResponse) {
 			}
 			prevOuts[op] = wire.NewTxOut(int64(p.AmountSats), s)
 		}
+		hasTaproot := false
+		for _, o := range prevOuts {
+			hasTaproot = hasTaproot || txscript.IsPayToTaproot(o.PkScript)
+		}
+		if !hasTaproot {
+			// NewTxSigHashes computes the taproot midstate only if some prevout is P2TR
+			// (consensus only needs it then), so the digest would be over zeroed hashes.
+			resp.Unsupported = true
+			resp.Error = "no P2TR prevout: NewTxSigHashes skips the taproot midstate"
+			return
+		}
 		fetcher := txscript.NewMultiPrevOutFetcher(prevOuts)
 		hashes := txscript.NewTxSigHashes(tx, fetcher)
 		var opts []txscript.TaprootSigHashOption

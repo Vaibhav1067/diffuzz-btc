@@ -73,6 +73,12 @@ struct AuxArgs {
     /// Maximum wrong-digest checks listed per implementation.
     #[arg(long, default_value_t = 20)]
     max_listed: usize,
+    /// Seed for generated checks (logged with the run).
+    #[arg(long, default_value_t = 1)]
+    seed: u64,
+    /// Number of generated checks to run after the upstream vectors.
+    #[arg(long, default_value_t = 0)]
+    count: u64,
 }
 
 /// Options shared by every command that runs the differential oracle.
@@ -594,7 +600,11 @@ fn cmd_summarize(args: &SummarizeArgs) -> Result<bool, String> {
 }
 
 fn cmd_aux(args: &AuxArgs) -> Result<bool, String> {
-    let checks = auxcmd::build_checks(&args.core_vectors, &args.bip341_vectors)?;
+    let mut checks = auxcmd::build_checks(&args.core_vectors, &args.bip341_vectors)?;
+    if args.count > 0 {
+        println!("generated checks: seed {} count {}", args.seed, args.count);
+        checks.extend(auxcmd::generated_checks(&checks, args.seed, args.count));
+    }
     let mut adapters = Vec::new();
     for name in &args.impls {
         let mut cfg = resolve(name)?;
