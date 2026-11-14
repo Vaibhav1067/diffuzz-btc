@@ -10,6 +10,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
+pub mod auxop;
 pub mod hex;
 pub mod script;
 pub mod taproot;

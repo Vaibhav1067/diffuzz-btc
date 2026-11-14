@@ -213,7 +213,9 @@ public static class Adapter
         while ((line = stdin.ReadLine()) != null)
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
-            stdout.WriteLine(JsonSerializer.Serialize(HandleLine(line)));
+            stdout.WriteLine(AuxOps.IsAux(line)
+                ? JsonSerializer.Serialize(AuxOps.Handle(line))
+                : JsonSerializer.Serialize(HandleLine(line)));
             // Flush every response: the caller may be waiting for exactly this one, and
             // StreamReader offers no reliable non-blocking "more input buffered?" check.
             stdout.Flush();

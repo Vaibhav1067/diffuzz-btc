@@ -114,3 +114,44 @@ func TestLastLineWithoutNewline(t *testing.T) {
 		t.Errorf("unexpected output %q", out.String())
 	}
 }
+
+func TestAuxTxinfoAndSighash(t *testing.T) {
+	in := `{"id":1,"op":"txinfo","tx_hex":"` + spending + `"}` + "\n" +
+		`{"id":2,"op":"txinfo","tx_hex":"` + spending + `00"}` + "\n" +
+		`{"id":3,"op":"sighash","kind":"legacy","tx_hex":"` + spending + `","input_index":0,"script_hex":"` + spent + `","hash_type":1,"amount_sats":0,"prevouts":[],"codesep_pos":4294967295}` + "\n" +
+		`{"id":4,"op":"sighash","kind":"legacy","tx_hex":"` + spending + `","input_index":0,"script_hex":"4c","hash_type":1,"amount_sats":0,"prevouts":[],"codesep_pos":0}` + "\n" +
+		`{"id":5,"op":"nope"}` + "\n"
+	var out bytes.Buffer
+	if err := run(strings.NewReader(in), &out); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 responses, got %d: %q", len(lines), out.String())
+	}
+	var r [5]auxResponse
+	for i := range lines {
+		if err := json.Unmarshal([]byte(lines[i]), &r[i]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The txid of this mainnet transaction, in internal (reversed display) byte order.
+	if !r[0].OK || r[0].Txid != "5dd4a20ef896b92f86c3260ff1277baed5ec3465870ac161a4a9ed24a726a3ac" {
+		t.Errorf("txinfo: %+v", r[0])
+	}
+	if r[0].Hex != spending || r[0].Weight == nil || *r[0].Weight != uint64(len(spending)/2*4) {
+		t.Errorf("txinfo hex/weight: %+v", r[0])
+	}
+	if r[1].OK {
+		t.Errorf("trailing byte must be rejected: %+v", r[1])
+	}
+	if !r[2].OK || len(r[2].Digest) != 64 {
+		t.Errorf("legacy sighash: %+v", r[2])
+	}
+	if r[3].OK || !r[3].Unsupported {
+		t.Errorf("unparsable script must be unsupported: %+v", r[3])
+	}
+	if r[4].OK || !r[4].Unsupported {
+		t.Errorf("unknown op: %+v", r[4])
+	}
+}

@@ -300,7 +300,13 @@ func run(in io.Reader, out io.Writer) error {
 	for {
 		line, err := rd.ReadBytes('\n')
 		if len(bytes.TrimSpace(line)) > 0 {
-			if encErr := enc.Encode(handleLine(line, version)); encErr != nil {
+			var out any
+			if isAux(line) {
+				out = handleAux(line)
+			} else {
+				out = handleLine(line, version)
+			}
+			if encErr := enc.Encode(out); encErr != nil {
 				return encErr
 			}
 			// Flush when no further request is already buffered, so pipelined batches are
