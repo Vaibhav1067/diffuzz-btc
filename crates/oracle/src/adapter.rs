@@ -17,7 +17,9 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use diffuzz_types::auxop::{AuxOp, AuxRequest, AuxResponse};
 use diffuzz_types::{Case, Outcome, Response, Verdict};
+use serde::Serialize;
 
 /// How to launch an adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -220,61 +222,109 @@ impl Adapter {
 
     /// Verify a batch of cases, pipelining requests. Verdicts are returned in input order.
     pub fn verify_batch(&mut self, cases: &[Case]) -> Vec<Verdict> {
+        let results = self.exchange(
+            cases.len(),
+            |i, id| cases[i].to_request(id),
+            |line| serde_json::from_str::<Response>(line).map(|r| (r.id, r)),
+        );
+        results
+            .into_iter()
+            .map(|r| match r {
+                Ok(resp) => {
+                    self.version.clone_from(&resp.impl_version);
+                    Verdict::from_response(resp)
+                }
+                Err(outcome) => self.verdict(outcome),
+            })
+            .collect()
+    }
+
+    /// Run a batch of auxiliary operations (tx info, sighash), pipelining requests. Results are
+    /// in input order; `Err` is a [`Outcome::Crash`] or [`Outcome::Timeout`].
+    pub fn aux_batch(&mut self, ops: &[AuxOp]) -> Vec<Result<AuxResponse, Outcome>> {
+        self.exchange(
+            ops.len(),
+            |i, id| AuxRequest {
+                id,
+                op: ops[i].clone(),
+            },
+            |line| serde_json::from_str::<AuxResponse>(line).map(|r| (r.id, r)),
+        )
+    }
+
+    /// Send `n` requests and collect `n` results in order, restarting the process after any
+    /// failure so later requests still get answered.
+    fn exchange<Q, R>(
+        &mut self,
+        n: usize,
+        make: impl Fn(usize, u64) -> Q,
+        parse: impl Fn(&str) -> serde_json::Result<(u64, R)>,
+    ) -> Vec<Result<R, Outcome>>
+    where
+        Q: Serialize,
+    {
         let started = Instant::now();
-        let mut out = Vec::with_capacity(cases.len());
-        while out.len() < cases.len() {
+        let mut out = Vec::with_capacity(n);
+        while out.len() < n {
             let before = out.len();
-            self.run_pipeline(&cases[before..], &mut out);
+            self.run_pipeline(before, n, &make, &parse, &mut out);
             if out.len() == before {
-                // Could not even start the adapter: fail the next case and keep going so a
+                // Could not even start the adapter: fail the next request and keep going so a
                 // permanently broken adapter still terminates.
-                let detail = "adapter could not be started".to_string();
                 self.stats.crashes += 1;
-                out.push(self.verdict(Outcome::Crash { detail }));
+                out.push(Err(Outcome::Crash {
+                    detail: "adapter could not be started".to_string(),
+                }));
             }
         }
         self.stats.busy += started.elapsed();
         out
     }
 
-    /// Send `cases` and collect responses until all are answered or one fails. On failure the
-    /// failing case gets its Crash/Timeout verdict and the process is torn down; the caller
-    /// resubmits the rest.
-    fn run_pipeline(&mut self, cases: &[Case], out: &mut Vec<Verdict>) {
+    /// Send requests `from..n` and collect responses until all are answered or one fails. On
+    /// failure the failing request gets its Crash/Timeout result and the process is torn down;
+    /// the caller resubmits the rest.
+    fn run_pipeline<Q: Serialize, R>(
+        &mut self,
+        from: usize,
+        n: usize,
+        make: &impl Fn(usize, u64) -> Q,
+        parse: &impl Fn(&str) -> serde_json::Result<(u64, R)>,
+        out: &mut Vec<Result<R, Outcome>>,
+    ) {
         if self.running.is_none() && self.start().is_err() {
             return;
         }
         let first_id = self.next_id;
-        self.next_id += cases.len() as u64;
+        self.next_id += (n - from) as u64;
 
         // Write everything up front. A write error means the process died; the read loop below
         // will observe that on the first unanswered request.
         if let Some(r) = self.running.as_mut() {
             let mut buf = Vec::new();
-            for (i, case) in cases.iter().enumerate() {
-                if serde_json::to_writer(&mut buf, &case.to_request(first_id + i as u64)).is_ok() {
+            for (k, i) in (from..n).enumerate() {
+                if serde_json::to_writer(&mut buf, &make(i, first_id + k as u64)).is_ok() {
                     buf.push(b'\n');
                 }
             }
             let _ = r.stdin.write_all(&buf).and_then(|()| r.stdin.flush());
         }
 
-        for i in 0..cases.len() {
-            let id = first_id + i as u64;
+        for k in 0..(n - from) {
+            let id = first_id + k as u64;
             let received = match self.running.as_ref() {
                 Some(r) => r.lines.recv_timeout(self.cfg.timeout),
                 None => Err(RecvTimeoutError::Disconnected),
             };
             let failure = match received {
-                Ok(line) => match serde_json::from_str::<Response>(&line) {
-                    Ok(resp) if resp.id == id => {
-                        self.version.clone_from(&resp.impl_version);
+                Ok(line) => match parse(&line) {
+                    Ok((got, resp)) if got == id => {
                         self.stats.answered += 1;
-                        out.push(Verdict::from_response(resp));
+                        out.push(Ok(resp));
                         continue;
                     }
-                    Ok(resp) => Outcome::Crash {
-                        detail: format!("id mismatch: sent {id}, got {}", resp.id),
+                    Ok((got, _)) => Outcome::Crash {
+                        detail: format!("id mismatch: sent {id}, got {got}"),
                     },
                     Err(e) => Outcome::Crash {
                         detail: format!("unparsable response ({e}): {}", truncate(&line, 200)),
@@ -302,7 +352,7 @@ impl Adapter {
                 }
                 other => other,
             };
-            out.push(self.verdict(outcome));
+            out.push(Err(outcome));
             return;
         }
     }

@@ -144,6 +144,19 @@ pub fn handle_line(line: &str) -> Response {
     }
 }
 
+/// Answer an auxiliary request line. libbitcoinconsensus exposes no transaction decoding or
+/// sighash API, so every operation is unsupported.
+pub fn handle_aux_line(line: &str) -> diffuzz_types::auxop::AuxResponse {
+    let id = serde_json::from_str::<serde_json::Value>(line)
+        .ok()
+        .and_then(|v| v.get("id").and_then(serde_json::Value::as_u64))
+        .unwrap_or(0);
+    diffuzz_types::auxop::AuxResponse::unsupported(
+        id,
+        "libbitcoinconsensus has no tx decoding or sighash API",
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,6 +232,9 @@ mod tests {
         assert!(!resp.ok);
         assert_eq!(resp.id, 9);
         assert_eq!(resp.error_class, Some(ErrorClass::Deserialize));
+
+        let aux = handle_aux_line(r#"{"id": 11, "op": "txinfo", "tx_hex": ""}"#);
+        assert!(aux.unsupported && !aux.ok && aux.id == 11);
 
         let resp = handle_line("not json");
         assert_eq!(resp.id, 0);

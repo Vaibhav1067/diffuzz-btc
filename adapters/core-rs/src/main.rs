@@ -4,7 +4,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use diffuzz_adapter_core::handle_line;
+use diffuzz_adapter_core::{handle_aux_line, handle_line};
 
 fn main() -> io::Result<()> {
     let stdin = io::stdin().lock();
@@ -14,8 +14,11 @@ fn main() -> io::Result<()> {
         if line.trim().is_empty() {
             continue;
         }
-        let resp = handle_line(&line);
-        serde_json::to_writer(&mut stdout, &resp)?;
+        if diffuzz_types::auxop::is_aux(&line) {
+            serde_json::to_writer(&mut stdout, &handle_aux_line(&line))?;
+        } else {
+            serde_json::to_writer(&mut stdout, &handle_line(&line))?;
+        }
         stdout.write_all(b"\n")?;
         stdout.flush()?;
     }

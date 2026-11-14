@@ -118,9 +118,24 @@ impl AuxResponse {
     }
 }
 
+/// True if a protocol line is an auxiliary request (a JSON object with an `"op"` field).
+pub fn is_aux(line: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(line)
+        .ok()
+        .is_some_and(|v| v.get("op").is_some())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_aux_lines() {
+        assert!(is_aux(r#"{"id":1,"op":"txinfo","tx_hex":""}"#));
+        assert!(!is_aux(r#"{"id":1,"tx_hex":""}"#));
+        assert!(!is_aux("not json"));
+        assert!(!is_aux("[1]"));
+    }
 
     #[test]
     fn wire_format() {

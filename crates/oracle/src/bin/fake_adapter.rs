@@ -9,11 +9,14 @@
 //! * `garbage-on:<s>`: print a non-JSON line
 //! * `wrong-id-on:<s>`: answer with a wrong id
 //! * `name:<n>`: report `<n>` as the implementation name
+//!
+//! Auxiliary `txinfo` requests echo `tx_hex` as `hex`; the triggers above apply to them too.
 
 #![forbid(unsafe_code)]
 
 use std::io::{self, BufRead, Write};
 
+use diffuzz_types::auxop::{AuxOp, AuxRequest, AuxResponse};
 use diffuzz_types::{ErrorClass, Request, Response};
 
 fn main() -> io::Result<()> {
@@ -30,6 +33,27 @@ fn main() -> io::Result<()> {
     let mut stdout = io::stdout().lock();
     for line in stdin.lines() {
         let line = line?;
+        if let Ok(aux) = serde_json::from_str::<AuxRequest>(&line) {
+            let AuxOp::Txinfo { tx_hex } = &aux.op else {
+                serde_json::to_writer(&mut stdout, &AuxResponse::unsupported(aux.id, "fake"))?;
+                writeln!(stdout)?;
+                stdout.flush()?;
+                continue;
+            };
+            if hit("crash-on:", tx_hex) {
+                std::process::exit(3);
+            }
+            let resp = AuxResponse {
+                id: aux.id,
+                ok: true,
+                hex: Some(tx_hex.clone()),
+                ..AuxResponse::default()
+            };
+            serde_json::to_writer(&mut stdout, &resp)?;
+            writeln!(stdout)?;
+            stdout.flush()?;
+            continue;
+        }
         let Ok(req) = serde_json::from_str::<Request>(&line) else {
             writeln!(
                 stdout,

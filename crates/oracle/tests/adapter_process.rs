@@ -97,3 +97,23 @@ fn repeated_crashes_terminate() {
     assert_eq!(v.len(), 3);
     assert!(v.iter().all(|v| matches!(v.outcome, Outcome::Crash { .. })));
 }
+
+#[test]
+fn aux_batch_survives_crash() {
+    use diffuzz_types::auxop::AuxOp;
+    let mut a = fake(&["crash-on:dead"]);
+    let ops: Vec<AuxOp> = ["aa", "dead", "bb"]
+        .iter()
+        .map(|t| AuxOp::Txinfo {
+            tx_hex: t.to_string(),
+        })
+        .collect();
+    let r = a.aux_batch(&ops);
+    assert_eq!(r.len(), 3);
+    assert_eq!(r[0].as_ref().unwrap().hex.as_deref(), Some("aa"));
+    assert!(matches!(r[1], Err(Outcome::Crash { .. })));
+    assert_eq!(r[2].as_ref().unwrap().hex.as_deref(), Some("bb"));
+    assert_eq!(a.stats().crashes, 1);
+    // Verification still works on the restarted process.
+    assert_eq!(a.verify(&case("01")).outcome, Outcome::Ok);
+}
