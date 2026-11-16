@@ -119,6 +119,13 @@ func sighash(req *auxRequest, resp *auxResponse) {
 			resp.Error = "amount exceeds int64"
 			return
 		}
+		if len(script) == 22 && script[0] == txscript.OP_0 && script[1] == txscript.OP_DATA_20 {
+			// CalcWitnessSigHash treats a P2WPKH program as the witness program and substitutes
+			// the P2PKH-style scriptCode; the wire protocol passes scriptCode verbatim.
+			resp.Unsupported = true
+			resp.Error = "CalcWitnessSigHash rewrites a P2WPKH program into a P2PKH scriptCode"
+			return
+		}
 		fetcher := txscript.NewCannedPrevOutputFetcher(nil, int64(req.AmountSats))
 		hashes := txscript.NewTxSigHashes(tx, fetcher)
 		digest, err = txscript.CalcWitnessSigHash(script, hashes, hashType, tx, idx, int64(req.AmountSats))
