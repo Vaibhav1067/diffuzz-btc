@@ -98,5 +98,5 @@ jobs:
       - name: Run targets
         run: |
           for t in tx_decode sighash_diff core_verify adapter_lines; do
-            cargo +nightly fuzz run --locked "$t" -- -max_total_time=30
+            cargo +nightly fuzz run -O "$t" -- -max_total_time=30
           done
