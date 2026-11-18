@@ -13,7 +13,7 @@ Design details are in `architecture.md`, `flag-mapping.md`, `generators.md` and
 
 | Surface | Implementations | Harness |
 |---|---|---|
-| Script verification (legacy, P2SH, segwit v0, taproot key and script path) | Bitcoin Core 26.0 (`libbitcoinconsensus`), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21 | `diffuzz replay`, `diffuzz fuzz` |
+| Script verification (legacy, P2SH, segwit v0, taproot key and script path) | Bitcoin Core 26.0 (`libbitcoinconsensus`), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537 | `diffuzz replay`, `diffuzz fuzz` |
 | Transaction decoding, legacy / BIP143 / BIP341 signature hashes | rust-bitcoin 0.32.102, btcd, NBitcoin (Core abstains: its library exposes neither) | `diffuzz aux` |
 | Our own transaction parser and sighash code vs rust-bitcoin, in-process | `crates/types`, `crates/gen` vs rust-bitcoin | cargo-fuzz targets in `fuzz/` |
 
@@ -25,16 +25,17 @@ Only the seven consensus flags are used (`P2SH`, `DERSIG`, `NULLDUMMY`, `CLTV`, 
 `WITNESS`, `TAPROOT`). Policy flags differ between implementations by design and would bury
 real signal.
 
-libbitcoin-system, the planned third interpreter, was not built. NBitcoin was used instead
-(reasons in `flag-mapping.md`). NBitcoin follows the structure of Core's interpreter closely, so
-it is less independent than btcd's from-scratch design.
+Of the four interpreters, btcd and libbitcoin are independent designs; NBitcoin follows the
+structure of Core's interpreter closely. libbitcoin runs in a digest-pinned Docker container
+built from source (`docker/libbitcoin.Dockerfile`), without network access.
 
 ## 2. Methodology
 
 **Ground truth first.** Before an adapter's answers are trusted, it must reproduce the
 expected verdict of every runnable vector in Core's `script_tests.json`, `tx_valid.json` and
-`tx_invalid.json` (Core v32.1). All three interpreters pass all 963 runnable vectors (1029
-cases); 488 vectors are skipped because their verdict depends on policy flags or on
+`tx_invalid.json` (Core v32.1). Core, btcd and NBitcoin pass all 963 runnable vectors (1029
+cases); libbitcoin passes 956 and abstains on 7 that carry witness data with `WITNESS` off, a
+state that cannot occur on chain (libbitcoin rejects it, Core ignores the witness). 488 vectors are skipped because their verdict depends on policy flags or on
 context-free transaction checks that are not script verification (`corpus-results.md`). The
 aux adapters must reproduce all 500 digests of Core's `sighash.json` and the 7 key-path digests
 of the BIP341 wallet vectors; they do.
@@ -47,6 +48,11 @@ wrapper, P2SH and segwit wrappers, fourteen taproot templates (annex, `OP_SUCCES
 `OP_CHECKSIGADD`, unknown leaf versions, the sigops budget, control-block corruption), and a
 mutator seeded with Core's vectors. A test calls Core in-process and asserts that each template
 is accepted in its valid form, so the success paths are reached.
+
+**Re-signing.** Half of all mutants get fresh signatures from the test keys over the mutated
+transaction (`crates/gen/src/resign.rs`), so mutations of signed data still reach success
+paths. A test requires every broken valid spend to verify in Core again after re-signing; on
+20,000 mutations of generated cases it raised Core's accept rate from 18.9% to 29.2%.
 
 **Feedback.** The targets are not instrumented. `diffuzz fuzz` keeps cases with a new
 signature: (each implementation's outcome, set of non-push opcodes, output type). This rewards
@@ -73,13 +79,23 @@ release builds, 12 workers, each worker running its own process per implementati
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | A | core, btcd | 20261117 | 600 s | 14,396,160 | 23,990 | 5,558,160 | 8,830,614 | 7,386 | 0 |
 | B | core, btcd, nbitcoin | 20261120 | 900 s | 14,327,040 | 15,917 | 5,503,862 | 8,789,787 | 33,391 | 0 |
+| C | core, btcd, nbitcoin | 20261122 | 3,590 s | 47,467,776 | 13,222 | 18,241,809 | 29,114,418 | 111,549 | 0 |
+| D | core, btcd, nbitcoin, libbitcoin | 20261123 | 600 s | 5,577,472 | 9,291 | 2,150,405 | 3,413,947 | 13,120 | 0 |
+
+Run C is `scripts/run_overnight.sh` (six 10-minute segments, re-signing enabled); a Docker
+build of libbitcoin overlapped its last segments, so its rate is a lower bound. In run D
+libbitcoin, at 1,259 cases/s per process (p50 798 µs, including the container pipe), is the
+bottleneck.
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON
 protocol was kept. In run B NBitcoin is the slowest process (3,330/s, p50 284 µs; Core 6,471/s and btcd 4,224/s
 while sharing the machine with it).
 
-Corpus replay (all three): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence.
+Corpus replay (all four): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence.
+
+In total, about 82 million generated script cases ran through the differential in these runs,
+plus earlier development runs.
 
 ### Transaction decoding and signature hashes
 
@@ -109,7 +125,11 @@ disclosure rule). This section lists only what has been cleared for publication.
    form by design, so it decodes a witness flag followed by zero inputs, which Core rejects.
    rust-bitcoin 0.32.102 (and master at 271f662a) checks the BIP341 input index only for
    `ANYONECANPAY`; consensus never asks for a sighash of a nonexistent input. Both are handled
-   in the rust-bitcoin adapter with citations.
+   in the rust-bitcoin adapter with citations. A fix for the input-index check, with a test that
+   fails without it, is prepared in `upstream/rust-bitcoin-taproot-input-index/` (not yet
+   submitted).
+3. **Modelling differences.** libbitcoin rejects witness data on a non-witness spend even with
+   segwit inactive; Core ignores it. Unreachable on chain; the adapter abstains.
 
 `KNOWN` in the tables counts cases matched by allowlist entries. Entries are narrow
 (direction, flag and case-feature conditions), so any other divergence still stops a run.
@@ -122,12 +142,13 @@ disclosure rule). This section lists only what has been cleared for publication.
   uses the last release that has it. Consensus code changes since then are not covered.
 - **No block-level checks.** Only per-input script verification: no `CheckTransaction`,
   sigop counting across a block, weight limits, coinbase rules or contextual checks.
-- **Two truly independent interpreters.** btcd is a reimplementation; NBitcoin is a close port
-  of Core's structure. libbitcoin was not built.
+- **Independence is partial.** btcd and libbitcoin are independent designs; NBitcoin is a
+  close port of Core's structure, so shared misreadings of Core are less likely to show up
+  between Core and NBitcoin.
 - **Generator gaps** (`generators.md`): at most three inputs and outputs, no multi-leaf taproot
   trees with more than one known leaf, the mutator does not re-sign.
-- **One machine, short runs.** The longest runs here are 10 to 15 minutes, plus earlier
-  overnight segments. These rates are for this machine only.
+- **One machine, short runs.** The longest run here is one hour. These rates are for this
+  machine only.
 - **Allowlist is trust-based.** An entry hides every case matching its conditions. Entries
   are kept narrow, but a second bug with the same shape would be hidden behind the first.
 - **Results are not all public.** Divergences still under review are not described here.
@@ -141,6 +162,10 @@ scripts/build_adapters.sh --release          # btcd (Go), NBitcoin (.NET), Rust 
 # Correctness proof
 target/release/diffuzz replay --impls core,btcd,nbitcoin \
   --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json
+
+# libbitcoin (Docker)
+docker build -f docker/libbitcoin.Dockerfile -t diffuzz-libbitcoin .
+export DIFFUZZ_ADAPTER_LIBBITCOIN=adapters/libbitcoin-cpp/diffuzz-adapter-libbitcoin.sh   # .cmd on Windows
 
 # Script differential (run A)
 target/release/diffuzz fuzz --seed 20261117 --duration 10m --workers 12 --impls core,btcd \
@@ -158,5 +183,5 @@ first divergence, which is the intended behaviour. On Windows inside a OneDrive 
 the Go adapter with `scripts/build_adapters.sh` (it builds from a temporary copy).
 
 Pinned versions: Rust 1.100.0, Core 26.0 via `bitcoinconsensus` 0.106.0+26.0, btcd
-`txscript/v2` v2.0.1, NBitcoin 10.0.21, rust-bitcoin 0.32.102, vectors from Core v32.1
+`txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537, rust-bitcoin 0.32.102, vectors from Core v32.1
 (`f0de87f0`) and bips `b34d9f75` (`vectors/SOURCES.md`).
