@@ -2,3 +2,4 @@
 *.sh text eol=lf
 # Upstream vectors are stored byte-for-byte so their checksums stay valid.
 vectors/**/*.json -text
+*.cmd text eol=crlf
