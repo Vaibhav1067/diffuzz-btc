@@ -26,7 +26,7 @@ plus pinned adapter versions.
             +-----------+     | oracle  |        +--------------------+
  seed ----> |    gen    | --> |         | -----> | adapter: btcd-go   |  btcd txscript
             +-----------+     |         |        +--------------------+
-                              |         | -----> | adapter: libbitcoin|  libbitcoin-system (stretch)
+                              |         | -----> | adapter: libbitcoin|  libbitcoin-system v4 (Docker)
                               +----+----+        +--------------------+
                                    |
                      divergences   v
@@ -101,7 +101,8 @@ drown real signal; they are confined to an opt-in policy mode.
 
 - **Bitcoin Core** is the reference. It is reached through bindings to its consensus code.
 - **btcd `txscript`** is an independent Go reimplementation of the interpreter.
-- **libbitcoin-system** is an independent C++ implementation (stretch goal).
+- **libbitcoin-system** is an independent C++ implementation, run in a Docker container.
+- **NBitcoin** is a C# implementation that closely follows Core's interpreter structure.
 - **rust-bitcoin** has no script interpreter, so it is *not* a script oracle. It takes part only
   in the serialization and sighash differentials.
 

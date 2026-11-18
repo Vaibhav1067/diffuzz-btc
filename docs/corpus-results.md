@@ -26,11 +26,16 @@ Last run: 2026-11-13, Windows 11 x86_64 (also run on every push by CI on Linux).
 A transaction vector yields one case per input; a valid vector needs every input accepted, an
 invalid one needs at least one input rejected.
 
-| Implementation | Version | Passed | Failed | Crashes | Timeouts |
-|---|---|---:|---:|---:|---:|
-| `core` | libbitcoinconsensus 26.0 (`bitcoinconsensus` 0.106.0+26.0) | 963 / 963 | 0 | 0 | 0 |
-| `btcd` | txscript/v2 v2.0.1 | 963 / 963 | 0 | 0 | 0 |
-| `nbitcoin` | NBitcoin 10.0.21 | 963 / 963 | 0 | 0 | 0 |
+| Implementation | Version | Passed | Failed | Abstained | Crashes | Timeouts |
+|---|---|---:|---:|---:|---:|---:|
+| `core` | libbitcoinconsensus 26.0 (`bitcoinconsensus` 0.106.0+26.0) | 963 / 963 | 0 | 0 | 0 | 0 |
+| `btcd` | txscript/v2 v2.0.1 | 963 / 963 | 0 | 0 | 0 | 0 |
+| `nbitcoin` | NBitcoin 10.0.21 | 963 / 963 | 0 | 0 | 0 | 0 |
+| `libbitcoin` | libbitcoin-system v4.0.10537 (added 2026-11-18) | 956 / 963 | 0 | 7 | 0 | 0 |
+
+libbitcoin's 7 abstentions are inputs with witness data and `WITNESS` off, a state that cannot
+occur on chain (`flag-mapping.md`). An abstaining vector is neither passed nor failed. With all
+four interpreters, the 1029 cases are 863 agree-accept and 166 agree-reject, with no divergence.
 
 No mismatches, so nothing needed to be classified as an adapter bug, an unsupported feature or
 an implementation difference, and `known_divergences/` is empty.

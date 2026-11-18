@@ -41,6 +41,9 @@ pub struct ImplReport {
     pub mismatches: Vec<Mismatch>,
     /// Cases that crashed the adapter.
     pub crashes: usize,
+    /// Vectors where the adapter abstained on a case (a documented adapter limitation): neither
+    /// passed nor failed. Listed with the adapter's reason.
+    pub abstained: Vec<Mismatch>,
     /// Cases that timed out.
     pub timeouts: usize,
 }
@@ -104,9 +107,15 @@ pub fn score(tests: &[VectorTest], verdicts: &[Verdict], name: &str) -> ImplRepo
         pos += t.cases.len();
         let mut accepted = Vec::with_capacity(vs.len());
         let mut broken = false;
+        let mut abstained = false;
         for v in vs {
             if !v.impl_version.is_empty() {
                 report.version.clone_from(&v.impl_version);
+            }
+            if matches!(&v.outcome, Outcome::Fail { error_class, .. } if error_class.is_abstention())
+            {
+                abstained = true;
+                continue;
             }
             match v.outcome.accepted() {
                 Some(a) => accepted.push(a),
@@ -119,8 +128,17 @@ pub fn score(tests: &[VectorTest], verdicts: &[Verdict], name: &str) -> ImplRepo
                 }
             }
         }
+        let entry = || Mismatch {
+            name: t.name.clone(),
+            comment: t.comment.clone(),
+            expect_valid: t.expect_valid,
+            expected_error: t.expected_error.clone(),
+            got: vs.iter().map(describe).collect(),
+        };
         // A crash or timeout never counts as meeting an expectation, even "invalid".
-        if !broken && t.satisfied_by(&accepted) {
+        if !broken && abstained {
+            report.abstained.push(entry());
+        } else if !broken && t.satisfied_by(&accepted) {
             report.passed += 1;
         } else {
             report.mismatches.push(Mismatch {
@@ -198,7 +216,7 @@ pub fn render(report: &FileReport, max_listed: usize) -> String {
     for i in &report.impls {
         let _ = writeln!(
             s,
-            "[{}] {}: total {}, passed {}, failed {}, crashes {}, timeouts {}",
+            "[{}] {}: total {}, passed {}, failed {}, abstained {}, crashes {}, timeouts {}",
             i.name,
             if i.version.is_empty() {
                 "(no version)"
@@ -208,9 +226,13 @@ pub fn render(report: &FileReport, max_listed: usize) -> String {
             report.tests,
             i.passed,
             i.mismatches.len(),
+            i.abstained.len(),
             i.crashes,
             i.timeouts
         );
+        for a in i.abstained.iter().take(max_listed) {
+            let _ = writeln!(s, "  ABSTAINED {}: {}", a.name, a.got.join(" | "));
+        }
         for m in i.mismatches.iter().take(max_listed) {
             let want = match (&m.expected_error, m.expect_valid) {
                 (_, true) => "OK".to_string(),
@@ -288,6 +310,23 @@ mod tests {
     }
 
     #[test]
+    fn abstentions_are_neither_passed_nor_failed() {
+        let tests = vec![test("a", 1, true), test("b", 2, false)];
+        let unsupported = Outcome::Fail {
+            error_class: ErrorClass::Unsupported,
+            raw_error: "limit".into(),
+        };
+        let verdicts = vec![
+            verdict(unsupported.clone()),
+            verdict(Outcome::Ok),
+            verdict(unsupported),
+        ];
+        let r = score(&tests, &verdicts, "x");
+        assert_eq!((r.passed, r.mismatches.len(), r.abstained.len()), (0, 0, 2));
+        assert_eq!(r.abstained[0].name, "a");
+    }
+
+    #[test]
     fn scoring() {
         let tests = vec![
             test("a", 2, true),
@@ -325,7 +364,10 @@ mod tests {
         assert!(!report.clean());
         assert_eq!(report.skipped_total(), 3);
         let text = render(&report, 1);
-        assert!(text.contains("total 4, passed 2, failed 2"), "{text}");
+        assert!(
+            text.contains("total 4, passed 2, failed 2, abstained 0"),
+            "{text}"
+        );
         assert!(
             text.contains("MISMATCH c expected OK; got FAIL EVAL_FALSE (r)"),
             "{text}"

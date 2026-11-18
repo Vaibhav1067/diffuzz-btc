@@ -119,6 +119,23 @@ btcd error codes map to error classes one-to-one where Core has an equivalent `S
 | `ErrNonConstScriptCode`, `ErrCodeSeparator` | `OP_CODESEPARATOR` |
 | unmapped codes (`ErrScriptUnfinished`, `ErrInvalidProgramCounter`, ...) | `UNKNOWN` |
 
+## libbitcoin adapter (`adapters/libbitcoin-cpp`)
+
+libbitcoin-system **v4.0.10537**, built from source in `docker/libbitcoin.Dockerfile` (Debian
+trixie pinned by digest; v4 needs no Boost and embeds secp256k1) and run as
+`docker run -i --rm --network none diffuzz-libbitcoin`. It verifies with
+`machine::interpreter<contiguous_stack>::connect` after attaching every spent output to its
+input. Flag mapping: `P2SH` bip16, `DERSIG` bip66, `NULLDUMMY` bip147, `CLTV` bip65, `CSV`
+bip112, `WITNESS` bip141+bip143, `TAPROOT` bip341+bip342. All failures are `UNKNOWN` with
+libbitcoin's error name as `raw_error`.
+
+One documented abstention: libbitcoin rejects a non-empty witness on a spend that is not a
+witness program even when segwit is not active (`interpreter_connect.ipp`,
+`error::unexpected_witness`), while Core ignores witness data without `WITNESS`. No such
+transaction can exist on chain, so the adapter answers `UNSUPPORTED` when the tested input has
+witness data and `WITNESS` is off. This covers 7 Core vectors (`script_tests.json` #1025,
+#1026, #1128-#1131; `tx_invalid.json` #143).
+
 ## NBitcoin adapter (`adapters/nbitcoin-cs`)
 
 **Why NBitcoin and not libbitcoin.** The plan named libbitcoin-system as the third oracle.
@@ -129,7 +146,8 @@ v4 line. NBitcoin was substituted: it is a separately maintained C# implementati
 taproot support, installs as one pinned NuGet package, and builds in seconds on Linux and
 Windows. Its interpreter follows the structure of Core's `interpreter.cpp`, so it is less
 independent than btcd's from-scratch design; what it adds is a third codebase whose
-translation and maintenance errors are its own. A libbitcoin adapter remains open work.
+translation and maintenance errors are its own. A libbitcoin adapter was added later as the
+fourth interpreter (next section).
 
 - The transaction is decoded with `Transaction.Load`; if it does not re-serialize to the same
   number of bytes the request is rejected as `DESERIALIZE`.
