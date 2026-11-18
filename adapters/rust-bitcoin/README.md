@@ -22,6 +22,6 @@ Supported operations (wire format: `crates/types/src/auxop.rs`):
   are answered `unsupported`.
 * All `sighash` kinds: the adapter rejects an out-of-range `input_index` itself, because
   `taproot_encode_signing_data_to` only checks it for ANYONECANPAY (0.32.102, still on master
-  271f662a as of 2026-11-14; no upstream report found).
+  271f662a as of 2026-11-14; no upstream report found; prepared fix in `upstream/rust-bitcoin-taproot-input-index/`).
 * `sighash` `bip341`: `taproot_signature_hash` with all prevouts, optional annex and
   `(leaf_hash_hex, codesep_pos)` for script path.

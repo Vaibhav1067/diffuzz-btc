@@ -1,0 +1,32 @@
+diff --git a/bitcoin/src/crypto/sighash.rs b/bitcoin/src/crypto/sighash.rs
+index a3580d5..3c7108b 100644
+--- a/bitcoin/src/crypto/sighash.rs
++++ b/bitcoin/src/crypto/sighash.rs
+@@ -372,6 +372,9 @@ pub fn taproot_encode_signing_data_to<W: Write, T: Borrow<TxOut>>(
+         sighash_type: TapSighashType,
+     ) -> Result<(), SigningDataError<TaprootError>> {
+         prevouts.check_all(self.tx.borrow()).map_err(SigningDataError::sighash)?;
++        // The input index is committed to in every mode, so it must exist in every mode, not only
++        // with ANYONECANPAY (where the input itself is serialized below).
++        self.tx.borrow().tx_in(input_index).map_err(SigningDataError::sighash)?;
+ 
+         let (sighash, anyone_can_pay) = sighash_type.split_anyonecanpay_flag();
+ 
+@@ -1701,6 +1704,17 @@ fn sighash_errors() {
+                 length: 1
+             }).into())
+         );
++        let one = [DUMMY_TXOUT];
++        let all_prevouts = Prevouts::All(&one);
++        for sighash_type in [TapSighashType::Default, TapSighashType::All, TapSighashType::None, TapSighashType::Single] {
++            assert_eq!(
++                c.taproot_signature_hash(10, &all_prevouts, None, None, sighash_type),
++                Err(InputsIndexError(IndexOutOfBoundsError {
++                    index: 10,
++                    length: 1
++                }).into())
++            );
++        }
+         let prevout = Prevouts::One(0, &tx_out);
+         assert_eq!(
+             c.taproot_signature_hash(0, &prevout, None, None, TapSighashType::SinglePlusAnyoneCanPay),
