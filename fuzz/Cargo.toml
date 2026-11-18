@@ -1,0 +1,50 @@
+[package]
+name = "diffuzz-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Own workspace: cargo-fuzz needs nightly and sanitizer flags the main workspace must not see.
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+arbitrary = { version = "1.5.0", features = ["derive"] }
+serde_json = "1.0.154"
+bitcoin = { version = "=0.32.102", default-features = false, features = ["std"] }
+diffuzz-types = { path = "../crates/types" }
+diffuzz-gen = { path = "../crates/gen" }
+diffuzz-adapter-core = { path = "../adapters/core-rs" }
+diffuzz-adapter-rust-bitcoin = { path = "../adapters/rust-bitcoin" }
+
+[[bin]]
+name = "tx_decode"
+path = "fuzz_targets/tx_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sighash_diff"
+path = "fuzz_targets/sighash_diff.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "core_verify"
+path = "fuzz_targets/core_verify.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "adapter_lines"
+path = "fuzz_targets/adapter_lines.rs"
+test = false
+doc = false
+bench = false

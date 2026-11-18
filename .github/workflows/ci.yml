@@ -82,3 +82,21 @@ jobs:
         run: bash scripts/fetch_vectors.sh
       - name: Tracked vectors are unchanged
         run: git diff --exit-code -- vectors/
+
+  fuzz-targets:
+    name: cargo-fuzz targets (30 s each)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fuzz
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly and cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo install cargo-fuzz --locked
+      - name: Run targets
+        run: |
+          for t in tx_decode sighash_diff core_verify adapter_lines; do
+            cargo +nightly fuzz run --locked "$t" -- -max_total_time=30
+          done
