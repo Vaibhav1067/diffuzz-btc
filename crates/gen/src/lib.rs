@@ -8,6 +8,7 @@
 pub mod auxgen;
 pub mod generators;
 pub mod keys;
+pub mod resign;
 pub mod rng;
 pub mod sighash;
 pub mod spend;

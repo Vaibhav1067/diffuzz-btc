@@ -396,10 +396,21 @@ impl MutateGen {
             let m = *rng.pick(&Mutation::ALL);
             out = mutate(rng, &out, donor, m);
         }
+        // Half of all mutants get fresh signatures from the test keys, so mutations of signed
+        // data can still reach success paths (see `resign`).
+        let mut tag = "";
+        if rng.chance(50) {
+            let resigned = crate::resign::resign(&out);
+            if resigned != out {
+                out = resigned;
+                tag = "resigned/";
+            }
+        }
         let parent = case.origin.as_deref().unwrap_or("unknown");
         // Keep origins bounded when mutants are mutated again.
         let parent = parent.strip_prefix("gen/mutate/").unwrap_or(parent);
-        out.origin = Some(format!("gen/mutate/{parent}"));
+        let parent = parent.strip_prefix("resigned/").unwrap_or(parent);
+        out.origin = Some(format!("gen/mutate/{tag}{parent}"));
         out
     }
 }
@@ -481,15 +492,18 @@ mod tests {
         let g = MutateGen::new(seeds.clone());
         assert_eq!(g.seed_count(), 8);
         let mut changed = 0;
+        let mut resigned = 0;
         for seed in 0..400 {
             let c = g.generate(&mut Rng::new(seed));
             assert_eq!(c, g.generate(&mut Rng::new(seed)), "deterministic");
-            assert!(
-                c.origin
-                    .as_deref()
-                    .unwrap()
-                    .starts_with("gen/mutate/gen/sig/")
-            );
+            let origin = c.origin.as_deref().unwrap();
+            let rest = origin.strip_prefix("gen/mutate/").unwrap();
+            if let Some(r) = rest.strip_prefix("resigned/") {
+                resigned += 1;
+                assert!(r.starts_with("gen/sig/"), "{origin}");
+            } else {
+                assert!(rest.starts_with("gen/sig/"), "{origin}");
+            }
             let tx = Tx::deserialize(&hex::decode(&c.tx_hex).unwrap()).unwrap();
             assert_eq!(tx.inputs.len(), c.prevouts.len());
             assert!(c.is_consensus_only());
@@ -503,6 +517,7 @@ mod tests {
             changed > 380,
             "only {changed}/400 mutants differ from their seeds"
         );
+        assert!(resigned > 50, "only {resigned}/400 mutants were re-signed");
     }
 
     #[test]

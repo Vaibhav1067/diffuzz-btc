@@ -98,6 +98,20 @@ emptying, and toggling a consensus flag. Scripts are edited at instruction granu
 P2SH redeem script or P2WSH witness script is mutated, the hash commitment is recomputed 75% of
 the time, so the mutated script is actually executed instead of failing the hash check.
 
+## Re-signing mutants
+
+`crates/gen/src/resign.rs`. Half of all mutants are passed through `resign`, which recomputes
+the sighash over the mutated transaction and replaces every signature made by a test key: bare
+and P2SH legacy scripts (with `FindAndDelete`), P2WPKH and P2WSH (also nested), and tapscript
+leaves with leaf version 0xc0 (witness items pair with keys top of stack first). Such mutants
+are tagged `gen/mutate/resigned/...`.
+
+`crates/gen/tests/resign_core.rs` proves it: valid spends are broken by changing the lock
+time, re-signed, and must all verify in Core again (every pre-taproot template under every
+wrapper, and the tapscript `checksig`, `checksigadd` and `annex` templates). On 20,000 single
+mutations of generated signature cases, re-signing raised Core's accept rate from 18.9% to
+29.2% (2026-11-18).
+
 ## Proof that success paths are reached
 
 `crates/gen/tests/core_accepts.rs` calls Bitcoin Core in-process and asserts, for 12 to 25
@@ -141,5 +155,7 @@ Distribution measured on the default weights is recorded with the fuzzing result
 - No generator for taproot script trees with more than one *known* leaf (siblings are random
   hashes), and none for P2SH-wrapped taproot, which is not a taproot spend.
 - Sighash `SINGLE` with a missing output is reached only by chance through the skeleton.
-- The mutator does not re-sign, so mutations that touch signed data mostly test failure paths.
+- Re-signing (below) covers only signatures made by test keys, and skips taproot key-path
+  spends and scripts containing `OP_CODESEPARATOR`. Mutants of Core's vectors are never
+  re-signed.
 - Transactions have at most three inputs and three outputs.
