@@ -100,3 +100,29 @@ jobs:
           for t in tx_decode sighash_diff core_verify adapter_lines; do
             cargo +nightly fuzz run -O "$t" -- -max_total_time=30
           done
+
+  libbitcoin:
+    name: libbitcoin adapter (Docker build, corpus replay)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: docker/setup-buildx-action@v3
+      - name: Build adapter image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/libbitcoin.Dockerfile
+          tags: diffuzz-libbitcoin
+          load: true
+          build-args: JOBS=4
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Corpus replay (core, libbitcoin)
+        env:
+          DIFFUZZ_ADAPTER_LIBBITCOIN: adapters/libbitcoin-cpp/diffuzz-adapter-libbitcoin.sh
+        run: >
+          cargo run --locked -p diffuzz-cli -- replay
+          --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json
+          --impls core,libbitcoin
