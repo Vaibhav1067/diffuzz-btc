@@ -47,7 +47,7 @@ The same replay compares the three implementations with each other (`ok` only):
 | **Total** | **1029** | 863 | 166 | 0 | 0 | 0 | 0 |
 
 (`tx_invalid.json` has AGREE_OK cases because only one input of an invalid transaction has to
-fail.) Throughput on this tiny run is not a benchmark; see the fuzzing results for rates.
+fail.) Throughput on this tiny run is not a benchmark; see `WRITEUP.md` for rates.
 
 ## What was skipped, and why
 

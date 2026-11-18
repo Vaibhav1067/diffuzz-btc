@@ -267,8 +267,35 @@ pub fn has_nonstrict_der_signature(case: &Case) -> bool {
     items.iter().any(|i| looks_like_der(i) && !is_strict_der(i))
 }
 
+/// Does the scriptSig put a one-byte small-integer item (`0x01..=0x10` or `0x81`, pushed either
+/// as `OP_1..OP_16` / `OP_1NEGATE` or as `01 xx`) on the stack, while the legacy scriptCode
+/// (scriptPubKey or redeemScript) contains the matching small-integer opcode?
+pub fn has_smallint_item_matching_scriptcode(case: &Case) -> bool {
+    let p = parts(case);
+    let items: Vec<u8> = instructions(&p.script_sig)
+        .0
+        .iter()
+        .filter_map(|i| match (i.opcode, i.data) {
+            (0x01, Some([v @ (0x01..=0x10 | 0x81)])) => Some(*v),
+            (0x51..=0x60, _) => Some(i.opcode - 0x50),
+            (0x4f, _) => Some(0x81),
+            _ => None,
+        })
+        .collect();
+    let opcode = |v: u8| if v == 0x81 { 0x4f } else { 0x50 + v };
+    [Some(&p.script_pubkey), p.redeem_script.as_ref()]
+        .into_iter()
+        .flatten()
+        .any(|code| {
+            instructions(code)
+                .0
+                .iter()
+                .any(|i| i.data.is_none() && items.iter().any(|v| opcode(*v) == i.opcode))
+        })
+}
+
 /// Names accepted by [`has_feature`].
-pub const FEATURES: [&str; 1] = ["nonstrict-der-signature"];
+pub const FEATURES: [&str; 2] = ["nonstrict-der-signature", "smallint-item-in-scriptcode"];
 
 /// Parse an `opcode:0xNN` feature name.
 fn opcode_feature(name: &str) -> Option<u8> {
@@ -285,6 +312,7 @@ pub fn is_known_feature(name: &str) -> bool {
 pub fn has_feature(case: &Case, name: &str) -> bool {
     match name {
         "nonstrict-der-signature" => has_nonstrict_der_signature(case),
+        "smallint-item-in-scriptcode" => has_smallint_item_matching_scriptcode(case),
         _ => opcode_feature(name).is_some_and(|o| opcode_set(case).contains(o)),
     }
 }
@@ -480,6 +508,18 @@ mod tests {
         ]));
         assert!(!is_strict_der(&[]));
 
+        let f = "smallint-item-in-scriptcode";
+        // OP_2 or 01 02 in the scriptSig, OP_2 in the scriptPubKey.
+        assert!(has_feature(&case(&[0x52, 0xae], &[0x00, 0x52], vec![]), f));
+        assert!(has_feature(
+            &case(&[0x52, 0xae], &[0x00, 0x01, 0x02], vec![]),
+            f
+        ));
+        assert!(has_feature(&case(&[0x4f, 0x87], &[0x01, 0x81], vec![]), f));
+        // Item without the matching opcode, or the opcode only as push data.
+        assert!(!has_feature(&case(&[0x53, 0xae], &[0x52], vec![]), f));
+        assert!(!has_feature(&case(&[0x01, 0x52], &[0x52], vec![]), f));
+        assert!(!has_feature(&case(&[0x52], &[0x02, 0x02, 0x00], vec![]), f));
         let mut sig_push = vec![strict.len() as u8];
         sig_push.extend(strict);
         assert!(!has_feature(
