@@ -197,7 +197,7 @@ impl Choices {
             1
         } else {
             *rng.pick(&[
-                2u8, 3, 0x81, 0x82, 0x83, 0x00, 0x04, 0x7f, 0x80, 0xff, 0x41, 0x1f, 0x21,
+                2u8, 3, 0x81, 0x82, 0x83, 0x00, 0x04, 0x7f, 0x80, 0xff, 0x41, 0x1f, 0x21, 0x43,
             ])
         };
         let quirk = if rng.chance(65) {
@@ -271,11 +271,7 @@ impl SigGen {
         let mut sk = skeleton(rng);
         // SIGHASH_SINGLE without a matching output is a consensus quirk of its own; reach it
         // on purpose instead of only when the skeleton happens to have too few outputs.
-        let orphan = is_single(c.hash_type) && rng.chance(40);
-        if orphan {
-            orphan_single(&mut sk, rng);
-        }
-        let suffix = if orphan { "/single-no-output" } else { "" };
+        let suffix = orphan_single(&mut sk, rng, is_single(c.hash_type));
         let key = 10 + rng.below(8) as u32;
         let pubkey = c.key_form.encode(key);
         let tap = TapParams::default();

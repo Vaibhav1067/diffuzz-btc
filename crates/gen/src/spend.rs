@@ -654,17 +654,23 @@ pub fn random_flags(rng: &mut Rng) -> Vec<Flag> {
 /// BIP143 hashes a zero `hashOutputs`, and BIP341 defines no digest at all. Call it before any
 /// signature is computed. With several inputs the last one is tested and some outputs are kept;
 /// with one input every output is removed.
-pub fn orphan_single(sk: &mut Skeleton, rng: &mut Rng) {
-    let n_in = sk.tx.inputs.len();
-    sk.index = n_in - 1;
+///
+/// Only acts when `single` is set, and then in 40% of calls; returns the origin suffix to
+/// append (`"/single-no-output"` or `""`).
+pub fn orphan_single(sk: &mut Skeleton, rng: &mut Rng, single: bool) -> &'static str {
+    if !single || !rng.chance(40) {
+        return "";
+    }
+    sk.index = sk.tx.inputs.len() - 1;
     let keep = rng.below(sk.index + 1);
     sk.tx.outputs.truncate(keep);
+    "/single-no-output"
 }
 
 /// Whether a hash type selects `SIGHASH_SINGLE` the way legacy and BIP143 read it (low five
 /// bits equal to 3).
 pub fn is_single(hash_type: u8) -> bool {
-    hash_type & 0x1f == 3
+    hash_type & 0x1f == sighash::SIGHASH_SINGLE
 }
 
 /// Turn a finished skeleton into a case.
@@ -725,7 +731,12 @@ mod tests {
         for seed in 0..200 {
             let mut rng = Rng::new(seed);
             let mut s = skeleton(&mut rng);
-            orphan_single(&mut s, &mut rng);
+            let before = s.clone();
+            assert_eq!(orphan_single(&mut s, &mut rng, false), "");
+            assert_eq!(s, before);
+            if orphan_single(&mut s, &mut rng, true).is_empty() {
+                continue;
+            }
             assert!(s.index < s.tx.inputs.len());
             assert!(s.tx.outputs.len() <= s.index);
         }

@@ -113,12 +113,7 @@ impl TaprootGen {
                     None
                 };
                 // BIP341 defines no digest for SIGHASH_SINGLE without a matching output.
-                let suffix = if is_single(spec.hash_type) && rng.chance(40) {
-                    orphan_single(&mut sk, rng);
-                    "/single-no-output"
-                } else {
-                    ""
-                };
+                let suffix = orphan_single(&mut sk, rng, is_single(spec.hash_type));
                 wrap_keypath(&mut sk, &spec, root, annex);
                 if !valid && rng.chance(10) {
                     // An extra witness element turns this into a (bogus) script-path spend.
@@ -382,12 +377,7 @@ impl TaprootGen {
         let single = items
             .iter()
             .any(|i| matches!(i, Item::Schnorr(s) if is_single(s.hash_type)));
-        let suffix = if single && rng.chance(40) {
-            orphan_single(&mut sk, rng);
-            "/single-no-output"
-        } else {
-            ""
-        };
+        let suffix = orphan_single(&mut sk, rng, single);
         wrap(&mut sk, Wrapper::Tapscript, &script, &items, &tap);
         to_case(&sk, flags, format!("gen/taproot/{name}{suffix}"))
     }
