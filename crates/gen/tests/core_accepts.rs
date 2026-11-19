@@ -426,3 +426,63 @@ fn mixed_stream_reaches_both_verdicts_in_every_category() {
         );
     }
 }
+
+#[test]
+fn sighash_single_without_output_is_valid_before_taproot_only() {
+    // Legacy signs the number one and BIP143 a zero hashOutputs: both verify. Count how many
+    // generated cases took the orphaned path so the test cannot pass vacuously.
+    let g = SigGen;
+    let mut orphaned = 0;
+    for hash_type in [0x03u8, 0x83, 0x43] {
+        for (template, wrapper) in [
+            (Template::P2pk, Wrapper::Bare),
+            (Template::P2pkh, Wrapper::P2sh),
+            (Template::P2pk, Wrapper::P2wsh),
+            (Template::Multisig, Wrapper::P2shP2wsh),
+            (Template::P2wpkh, Wrapper::Bare),
+            (Template::SigInScript, Wrapper::Bare),
+        ] {
+            for seed in 0..30 {
+                let choices = Choices {
+                    hash_type,
+                    ..Choices::valid()
+                };
+                let case = g.build(&mut Rng::new(seed), template, wrapper, &choices, all());
+                if !case
+                    .origin
+                    .as_deref()
+                    .unwrap()
+                    .ends_with("/single-no-output")
+                {
+                    continue;
+                }
+                orphaned += 1;
+                assert!(
+                    core(&case).is_ok(),
+                    "hash type {hash_type:#04x}, {} under {} (seed {seed}): {:?}",
+                    template.name(),
+                    wrapper.name(),
+                    core(&case)
+                );
+            }
+        }
+    }
+    assert!(orphaned > 100, "only {orphaned} orphaned cases");
+
+    // BIP341 defines no digest here, so every such taproot spend fails.
+    let t = TaprootGen;
+    let mut orphaned = 0;
+    for seed in 0..2000 {
+        let case = t.build(&mut Rng::new(seed), "keypath", false, all());
+        if case
+            .origin
+            .as_deref()
+            .unwrap()
+            .ends_with("/single-no-output")
+        {
+            orphaned += 1;
+            assert!(core(&case).is_err(), "taproot keypath (seed {seed})");
+        }
+    }
+    assert!(orphaned > 10, "only {orphaned} orphaned taproot cases");
+}

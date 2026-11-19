@@ -9,8 +9,8 @@ use super::Generator;
 use crate::keys::test_key;
 use crate::rng::Rng;
 use crate::spend::{
-    CbTamper, Damage, Internal, Item, SchnorrSpec, TapParams, Wrapper, random_flags, skeleton,
-    to_case, wrap, wrap_keypath,
+    CbTamper, Damage, Internal, Item, SchnorrSpec, TapParams, Wrapper, is_single, orphan_single,
+    random_flags, skeleton, to_case, wrap, wrap_keypath,
 };
 
 /// The cases this generator can produce.
@@ -112,12 +112,19 @@ impl TaprootGen {
                 } else {
                     None
                 };
+                // BIP341 defines no digest for SIGHASH_SINGLE without a matching output.
+                let suffix = if is_single(spec.hash_type) && rng.chance(40) {
+                    orphan_single(&mut sk, rng);
+                    "/single-no-output"
+                } else {
+                    ""
+                };
                 wrap_keypath(&mut sk, &spec, root, annex);
                 if !valid && rng.chance(10) {
                     // An extra witness element turns this into a (bogus) script-path spend.
                     sk.tx.inputs[sk.index].witness.push(rng.bytes(33));
                 }
-                return to_case(&sk, flags, "gen/taproot/keypath".to_string());
+                return to_case(&sk, flags, format!("gen/taproot/keypath{suffix}"));
             }
             "scriptpath-tree" => {
                 // Merkle path length, including the maximum of 128 and one beyond it.
@@ -372,8 +379,17 @@ impl TaprootGen {
                 }
             }
         }
+        let single = items
+            .iter()
+            .any(|i| matches!(i, Item::Schnorr(s) if is_single(s.hash_type)));
+        let suffix = if single && rng.chance(40) {
+            orphan_single(&mut sk, rng);
+            "/single-no-output"
+        } else {
+            ""
+        };
         wrap(&mut sk, Wrapper::Tapscript, &script, &items, &tap);
-        to_case(&sk, flags, format!("gen/taproot/{name}"))
+        to_case(&sk, flags, format!("gen/taproot/{name}{suffix}"))
     }
 
     /// A case of the named template that must verify under every consensus flag.
@@ -420,9 +436,10 @@ mod tests {
                 let a = g.build(&mut Rng::new(8), name, valid, Flag::CONSENSUS.to_vec());
                 let b = g.build(&mut Rng::new(8), name, valid, Flag::CONSENSUS.to_vec());
                 assert_eq!(a, b, "{name}");
-                assert_eq!(
-                    a.origin.as_deref(),
-                    Some(format!("gen/taproot/{name}").as_str())
+                let origin = a.origin.as_deref().unwrap_or_default();
+                assert!(
+                    origin.starts_with(&format!("gen/taproot/{name}")),
+                    "{origin}"
                 );
                 let spk = &a.prevouts[a.input_index as usize].script_pubkey_hex;
                 assert!(

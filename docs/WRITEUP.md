@@ -82,6 +82,7 @@ release builds, 12 workers, each worker running its own process per implementati
 | C | core, btcd, nbitcoin | 20261122 | 3,590 s | 47,467,776 | 13,222 | 18,241,809 | 29,114,418 | 111,549 | 0 |
 | D | core, btcd, nbitcoin, libbitcoin | 20261123 | 600 s | 5,577,472 | 9,291 | 2,150,405 | 3,413,947 | 13,120 | 0 |
 | E | core, btcd, nbitcoin, libbitcoin | 20261124 | 7,176 s | 68,086,272 | 9,488 | 26,251,953 | 41,675,524 | 158,795 | 0 |
+| F | core, btcd, nbitcoin, libbitcoin | 20261125 | 300 s | 2,721,536 | 9,066 | 1,049,588 | 1,665,493 | 6,455 | 0 |
 
 Run C is `scripts/run_overnight.sh` (six 10-minute segments, re-signing enabled); a Docker
 build of libbitcoin overlapped its last segments, so its rate is a lower bound. In run D
@@ -89,6 +90,8 @@ libbitcoin, at 1,259 cases/s per process (p50 798 µs, including the container p
 bottleneck. Run E is twelve 10-minute segments with all four interpreters: per process
 Core 3,475/s (p50 258 µs), btcd 2,633/s, NBitcoin 1,879/s and libbitcoin 1,208/s (p50 827 µs),
 no process restarts, 1.6 million distinct behavioural signatures.
+Run F is the first after the generators began targeting `SIGHASH_SINGLE` without a matching
+output on purpose (about 1% of cases, see `generators.md`).
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON

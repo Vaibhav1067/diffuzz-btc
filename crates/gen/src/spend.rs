@@ -649,6 +649,24 @@ pub fn random_flags(rng: &mut Rng) -> Vec<Flag> {
     flags
 }
 
+/// Make the input under test have no output at the same index, so that `SIGHASH_SINGLE` has
+/// nothing to commit to: legacy signatures then sign the number one (the "SIGHASH_SINGLE bug"),
+/// BIP143 hashes a zero `hashOutputs`, and BIP341 defines no digest at all. Call it before any
+/// signature is computed. With several inputs the last one is tested and some outputs are kept;
+/// with one input every output is removed.
+pub fn orphan_single(sk: &mut Skeleton, rng: &mut Rng) {
+    let n_in = sk.tx.inputs.len();
+    sk.index = n_in - 1;
+    let keep = rng.below(sk.index + 1);
+    sk.tx.outputs.truncate(keep);
+}
+
+/// Whether a hash type selects `SIGHASH_SINGLE` the way legacy and BIP143 read it (low five
+/// bits equal to 3).
+pub fn is_single(hash_type: u8) -> bool {
+    hash_type & 0x1f == 3
+}
+
 /// Turn a finished skeleton into a case.
 pub fn to_case(sk: &Skeleton, flags: Vec<Flag>, origin: String) -> Case {
     Case {
@@ -700,6 +718,19 @@ mod tests {
             assert!(s.index < s.tx.inputs.len());
             assert!(s.tx.outputs.len() <= 3);
         }
+    }
+
+    #[test]
+    fn orphan_single_leaves_no_matching_output() {
+        for seed in 0..200 {
+            let mut rng = Rng::new(seed);
+            let mut s = skeleton(&mut rng);
+            orphan_single(&mut s, &mut rng);
+            assert!(s.index < s.tx.inputs.len());
+            assert!(s.tx.outputs.len() <= s.index);
+        }
+        assert!(is_single(0x03) && is_single(0x83) && is_single(0x43) && is_single(0x23));
+        assert!(!is_single(0x01) && !is_single(0x02) && !is_single(0x04));
     }
 
     #[test]

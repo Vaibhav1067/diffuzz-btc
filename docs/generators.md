@@ -61,7 +61,11 @@ from valid:
 
 - hash type: `ALL` 45% of the time, otherwise `NONE`, `SINGLE`, their `ANYONECANPAY` forms and
   undefined bytes (`0x00`, `0x04`, `0x1f`, `0x21`, `0x41`, `0x7f`, `0x80`, `0xff`), all signed
-  correctly since consensus hashes whatever byte is present;
+  correctly since consensus hashes whatever byte is present. When the byte selects `SINGLE`
+  (low five bits `3`), 40% of cases remove the output matching the input under test
+  (`spend::orphan_single`, origin suffix `/single-no-output`): legacy then signs the number one,
+  BIP143 a zero `hashOutputs`, and both verify in Core; the `taproot` generator does the same for
+  `SINGLE` Schnorr signatures, which BIP341 makes invalid. About 1% of the mixed stream;
 - DER encoding: strict, or one of seven variants that only a lax parser accepts;
 - high-S;
 - public key: compressed, uncompressed, hybrid, and six invalid forms;
@@ -154,7 +158,6 @@ Distribution measured on the default weights is recorded with the fuzzing result
 
 - No generator for taproot script trees with more than one *known* leaf (siblings are random
   hashes), and none for P2SH-wrapped taproot, which is not a taproot spend.
-- Sighash `SINGLE` with a missing output is reached only by chance through the skeleton.
 - Re-signing (below) covers only signatures made by test keys, and skips taproot key-path
   spends and scripts containing `OP_CODESEPARATOR`. Mutants of Core's vectors are never
   re-signed.

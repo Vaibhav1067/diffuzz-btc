@@ -9,8 +9,8 @@ use super::Generator;
 use crate::keys::{DerQuirk, test_key};
 use crate::rng::Rng;
 use crate::spend::{
-    Damage, EcdsaSpec, Item, SigVersion, TapParams, Wrapper, ecdsa_sig, hash160, random_flags,
-    skeleton, to_case, wrap, wrap_p2wpkh,
+    Damage, EcdsaSpec, Item, SigVersion, TapParams, Wrapper, ecdsa_sig, hash160, is_single,
+    orphan_single, random_flags, skeleton, to_case, wrap, wrap_p2wpkh,
 };
 
 /// Script shapes this generator produces.
@@ -269,6 +269,13 @@ impl SigGen {
         flags: Vec<Flag>,
     ) -> Case {
         let mut sk = skeleton(rng);
+        // SIGHASH_SINGLE without a matching output is a consensus quirk of its own; reach it
+        // on purpose instead of only when the skeleton happens to have too few outputs.
+        let orphan = is_single(c.hash_type) && rng.chance(40);
+        if orphan {
+            orphan_single(&mut sk, rng);
+        }
+        let suffix = if orphan { "/single-no-output" } else { "" };
         let key = 10 + rng.below(8) as u32;
         let pubkey = c.key_form.encode(key);
         let tap = TapParams::default();
@@ -369,7 +376,7 @@ impl SigGen {
                 return to_case(
                     &sk,
                     flags,
-                    format!("gen/sig/{wrapper_name}/{}", template.name()),
+                    format!("gen/sig/{wrapper_name}/{}{suffix}", template.name()),
                 );
             }
         }
@@ -378,7 +385,7 @@ impl SigGen {
         to_case(
             &sk,
             flags,
-            format!("gen/sig/{wrapper_name}/{}", template.name()),
+            format!("gen/sig/{wrapper_name}/{}{suffix}", template.name()),
         )
     }
 
