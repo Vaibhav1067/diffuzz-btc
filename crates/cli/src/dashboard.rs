@@ -165,12 +165,10 @@ pub fn split_label(arg: &str) -> (String, &Path) {
             (label.to_string(), Path::new(path))
         }
         _ => {
-            let p = Path::new(arg);
-            let stem = p
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            (stem, p)
+            // Split on either separator so labels are the same on every platform.
+            let name = arg.rsplit(['/', '\\']).next().unwrap_or(arg);
+            let stem = name.rsplit_once('.').map_or(name, |(s, _)| s);
+            (stem.to_string(), Path::new(arg))
         }
     }
 }
