@@ -10,8 +10,8 @@ transaction decoding and signature hashes.
 | Script verification: legacy, P2SH, segwit v0, taproot key and script path | Bitcoin Core 26.0 (`libbitcoinconsensus`), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537 |
 | Transaction decoding, legacy / BIP143 / BIP341 signature hashes | rust-bitcoin 0.32.102, btcd, NBitcoin, libbitcoin (Core abstains: its library exposes neither) |
 
-Results so far (one Windows machine, November 2026): about 82 million generated script cases
-across four runs with no unexplained divergence, every adapter reproducing Bitcoin Core's own
+Results so far (one Windows machine, November 2026): about 150 million generated script cases
+across five runs with no unexplained divergence, every adapter reproducing Bitcoin Core's own
 test vectors, and over 900,000 sighash and decoding checks. Methodology, numbers and
 limitations are in [docs/WRITEUP.md](docs/WRITEUP.md).
 

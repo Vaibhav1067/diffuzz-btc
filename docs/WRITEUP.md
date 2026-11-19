@@ -70,7 +70,7 @@ example case and a reason, and must state the direction of the disagreement.
 
 ## 3. Results
 
-Measured on 2026-11-16 to 2026-11-18 on one Windows 11 x86_64 machine with 16 logical cores,
+Measured on 2026-11-16 to 2026-11-19 on one Windows 11 x86_64 machine with 16 logical cores,
 release builds, 12 workers, each worker running its own process per implementation.
 
 ### Script verification
@@ -81,11 +81,14 @@ release builds, 12 workers, each worker running its own process per implementati
 | B | core, btcd, nbitcoin | 20261120 | 900 s | 14,327,040 | 15,917 | 5,503,862 | 8,789,787 | 33,391 | 0 |
 | C | core, btcd, nbitcoin | 20261122 | 3,590 s | 47,467,776 | 13,222 | 18,241,809 | 29,114,418 | 111,549 | 0 |
 | D | core, btcd, nbitcoin, libbitcoin | 20261123 | 600 s | 5,577,472 | 9,291 | 2,150,405 | 3,413,947 | 13,120 | 0 |
+| E | core, btcd, nbitcoin, libbitcoin | 20261124 | 7,176 s | 68,086,272 | 9,488 | 26,251,953 | 41,675,524 | 158,795 | 0 |
 
 Run C is `scripts/run_overnight.sh` (six 10-minute segments, re-signing enabled); a Docker
 build of libbitcoin overlapped its last segments, so its rate is a lower bound. In run D
 libbitcoin, at 1,259 cases/s per process (p50 798 µs, including the container pipe), is the
-bottleneck.
+bottleneck. Run E is twelve 10-minute segments with all four interpreters: per process
+Core 3,475/s (p50 258 µs), btcd 2,633/s, NBitcoin 1,879/s and libbitcoin 1,208/s (p50 827 µs),
+no process restarts, 1.6 million distinct behavioural signatures.
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON
@@ -94,7 +97,7 @@ while sharing the machine with it).
 
 Corpus replay (all four): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence.
 
-In total, about 82 million generated script cases ran through the differential in these runs,
+In total, about 150 million generated script cases ran through the differential in these runs,
 plus earlier development runs.
 
 ### Transaction decoding and signature hashes
@@ -104,6 +107,7 @@ plus earlier development runs.
 | Upstream vectors | 1,140 | 0 | 0 |
 | Generated, seeds 1, 2, 3 (100k each) | 300,000 | 0 | 0 |
 | Generated, seed 20261116 | 500,000 | 0 | 0 |
+| Upstream vectors plus 100k generated, libbitcoin as fifth implementation, seed 20261120 | 101,140 | 0 | 0 |
 
 Generated checks include annexes, script-path leaves, undefined hash types,
 `SIGHASH_SINGLE` without a matching output, out-of-range input indexes, unparsable scriptCodes
@@ -146,8 +150,9 @@ disclosure rule). This section lists only what has been cleared for publication.
   close port of Core's structure, so shared misreadings of Core are less likely to show up
   between Core and NBitcoin.
 - **Generator gaps** (`generators.md`): at most three inputs and outputs, no multi-leaf taproot
-  trees with more than one known leaf, the mutator does not re-sign.
-- **One machine, short runs.** The longest run here is one hour. These rates are for this
+  trees with more than one known leaf; the mutator re-signs only signatures made with the
+  generator's own test keys, and only half of its mutants.
+- **One machine, short runs.** The longest run here is two hours. These rates are for this
   machine only.
 - **Allowlist is trust-based.** An entry hides every case matching its conditions. Entries
   are kept narrow, but a second bug with the same shape would be hidden behind the first.
