@@ -133,8 +133,9 @@ disclosure rule). This section lists only what has been cleared for publication.
    rust-bitcoin 0.32.102 (and master at 271f662a) checks the BIP341 input index only for
    `ANYONECANPAY`; consensus never asks for a sighash of a nonexistent input. Both are handled
    in the rust-bitcoin adapter with citations. A fix for the input-index check, with a test that
-   fails without it, is prepared in `upstream/rust-bitcoin-taproot-input-index/` (not yet
-   submitted).
+   fails without it, is in `upstream/rust-bitcoin-taproot-input-index/`. It was not
+   submitted: rust-bitcoin does not accept first-time patches written with an LLM (its
+   `CONTRIBUTING.md`), and this one was.
 3. **Modelling differences.** libbitcoin rejects witness data on a non-witness spend even with
    segwit inactive; Core ignores it. Unreachable on chain; the adapter abstains.
 

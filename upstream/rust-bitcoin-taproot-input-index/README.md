@@ -1,7 +1,11 @@
 # rust-bitcoin: BIP341 sighash accepts a nonexistent input index
 
-Status: **prepared, not submitted.** Opening an issue or PR needs the owner's go-ahead
-(CLAUDE.md rule 1). Not consensus-relevant, so rule 2 does not apply.
+Status: **not submitted, by decision (2026-11-19).** rust-bitcoin's `CONTRIBUTING.md` does not
+welcome first-time contributions made with an LLM and requires such patches to say so in the
+git log and PR, and PR text must be substantially written by a human. This patch was prepared
+with an LLM, so it is kept here as a record: anyone who reviews it and writes it up themselves
+is welcome to use it. Not consensus-relevant (rule 2 does not apply). Re-checked on master
+2026-11-19: the bug is still present.
 
 ## Problem
 

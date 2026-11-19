@@ -74,7 +74,7 @@ adapters/        core-rs, btcd-go, nbitcoin-cs, libbitcoin-cpp, rust-bitcoin
 fuzz/            cargo-fuzz targets (nightly)
 vectors/         pinned upstream vectors, see vectors/SOURCES.md
 docs/            architecture, flag mapping, generators, aux protocol, corpus results, write-up
-upstream/        prepared upstream contributions (not yet submitted)
+upstream/        upstream fixes kept as a record (not submitted; see its README)
 ```
 
 ## How findings are handled
