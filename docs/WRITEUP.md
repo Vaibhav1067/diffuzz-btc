@@ -92,6 +92,9 @@ Core 3,475/s (p50 258 µs), btcd 2,633/s, NBitcoin 1,879/s and libbitcoin 1,208/
 no process restarts, 1.6 million distinct behavioural signatures.
 Run F is the first after the generators began targeting `SIGHASH_SINGLE` without a matching
 output on purpose (about 1% of cases, see `generators.md`).
+Runs A–F used the skeleton of 1 to 3 inputs and 0 to 3 outputs (up to commit f14253e).
+Later commits draw different cases from the same seed; check out that commit to reproduce
+these numbers.
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON
@@ -153,7 +156,7 @@ disclosure rule). This section lists only what has been cleared for publication.
 - **Independence is partial.** btcd and libbitcoin are independent designs; NBitcoin is a
   close port of Core's structure, so shared misreadings of Core are less likely to show up
   between Core and NBitcoin.
-- **Generator gaps** (`generators.md`): at most three inputs and outputs, no multi-leaf taproot
+- **Generator gaps** (`generators.md`): at most twelve inputs and six outputs, no multi-leaf taproot
   trees with more than one known leaf; the mutator re-signs only signatures made with the
   generator's own test keys, and only half of its mutants.
 - **One machine, short runs.** The longest run here is two hours. These rates are for this

@@ -161,4 +161,5 @@ Distribution measured on the default weights is recorded with the fuzzing result
 - Re-signing (below) covers only signatures made by test keys, and skips taproot key-path
   spends and scripts containing `OP_CODESEPARATOR`. Mutants of Core's vectors are never
   re-signed.
-- Transactions have at most three inputs and three outputs.
+- Transactions have at most twelve inputs (usually one to six) and six outputs. Other inputs
+  spend simple outputs (`OP_1`, P2PKH, P2WPKH, P2TR), never another generated spend.

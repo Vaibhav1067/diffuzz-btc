@@ -152,11 +152,13 @@ const LOCK_TIMES: [u32; 8] = [
 ];
 const VERSIONS: [u32; 8] = [1, 2, 2, 2, 0, 3, 0x8000_0000, 0xffff_ffff];
 
-/// A random transaction skeleton: 1 to 3 inputs, 0 to 3 outputs, boundary-heavy version,
-/// lock time and sequence values. Inputs other than the one under test spend simple outputs.
+/// A random transaction skeleton: 1 to 6 inputs (rarely 12), 0 to 6 outputs, boundary-heavy
+/// version, lock time and sequence values. Inputs other than the one under test spend simple
+/// outputs, including P2TR ones, so BIP341's hashes over all spent outputs see mixed types.
 pub fn skeleton(rng: &mut Rng) -> Skeleton {
-    let n_in = 1 + rng.weighted(&[70, 20, 10]);
-    let n_out = rng.weighted(&[5, 60, 25, 10]);
+    const INPUTS: [usize; 7] = [1, 2, 3, 4, 5, 6, 12];
+    let n_in = INPUTS[rng.weighted(&[62, 18, 9, 4, 3, 2, 2])];
+    let n_out = rng.weighted(&[5, 55, 22, 8, 4, 3, 3]);
     let mut inputs = Vec::with_capacity(n_in);
     let mut prevouts = Vec::with_capacity(n_in);
     for _ in 0..n_in {
@@ -169,10 +171,11 @@ pub fn skeleton(rng: &mut Rng) -> Skeleton {
             sequence: *rng.pick(&SEQUENCES),
             witness: Vec::new(),
         });
-        let spk = match rng.below(3) {
+        let spk = match rng.below(4) {
             0 => vec![0x51],
             1 => p2pkh_script(&test_key(900).compressed()),
-            _ => p2wpkh_script(&test_key(901).compressed()),
+            2 => p2wpkh_script(&test_key(901).compressed()),
+            _ => taproot::p2tr_script(&test_key(903).xonly()),
         };
         prevouts.push((spk, 1_000 + rng.below(1_000_000) as u64));
     }
@@ -717,13 +720,24 @@ mod tests {
         let a = skeleton(&mut Rng::new(11));
         let b = skeleton(&mut Rng::new(11));
         assert_eq!(a, b);
+        let (mut wide, mut many_out, mut p2tr_other) = (false, false, false);
         for seed in 0..200 {
             let s = skeleton(&mut Rng::new(seed));
-            assert!(!s.tx.inputs.is_empty() && s.tx.inputs.len() <= 3);
+            wide |= s.tx.inputs.len() == 12;
+            many_out |= s.tx.outputs.len() == 6;
+            p2tr_other |=
+                s.prevouts.iter().enumerate().any(|(i, (spk, _))| {
+                    i != s.index && spk.len() == 34 && spk[..2] == [0x51, 0x20]
+                });
+            assert!(!s.tx.inputs.is_empty() && s.tx.inputs.len() <= 12);
             assert_eq!(s.prevouts.len(), s.tx.inputs.len());
             assert!(s.index < s.tx.inputs.len());
-            assert!(s.tx.outputs.len() <= 3);
+            assert!(s.tx.outputs.len() <= 6);
         }
+        assert!(
+            wide && many_out && p2tr_other,
+            "{wide} {many_out} {p2tr_other}"
+        );
     }
 
     #[test]
