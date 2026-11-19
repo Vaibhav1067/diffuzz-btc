@@ -1,0 +1,10 @@
+# Keep the build context small, and keep private findings out of every image.
+.git
+target
+**/target
+out
+findings
+vectors
+fuzz
+docs
+.impeccable

@@ -11,6 +11,7 @@ implementation's flags. This table must be updated whenever an adapter changes. 
 | `core` | Bitcoin Core `libbitcoinconsensus` | Core **26.0**, via crate `bitcoinconsensus = "=0.106.0"` (`0.106.0+26.0`) | `adapters/core-rs/Cargo.toml`, `Cargo.lock` |
 | `btcd` | btcd `txscript` | `github.com/btcsuite/btcd/txscript/v2` **v2.0.1**, `wire/v2` v2.0.2 | `adapters/btcd-go/go.mod`, `go.sum` |
 | `nbitcoin` | NBitcoin `ScriptEvaluationContext` | NuGet `NBitcoin` **10.0.21** (exact pin) on .NET 10 | `adapters/nbitcoin-cs/diffuzz-adapter-nbitcoin.csproj` |
+| `core-kernel` | current Bitcoin Core `libbitcoinkernel` | Core master **70d9ec7f3d4** (2026-07, version 31.99) via crate `bitcoinkernel = "=0.3.2"`, built in Docker | `adapters/core-kernel-rs/Cargo.toml`, its `Cargo.lock`, `docker/core-kernel.Dockerfile` |
 
 ## Consensus flags (used by the main oracle)
 
@@ -66,6 +67,20 @@ would need a custom C++ harness over Core's sources; that is not built.
 
 `bitcoinconsensus` was chosen: it supports every consensus flag including taproot, builds
 hermetically on Linux and Windows, and is an exact, immutable source snapshot.
+
+**Update 2026-11-19: current Core as a second Core oracle.** `bitcoinkernel` 0.3.2 now backs the
+`core-kernel` adapter (`adapters/core-kernel-rs`). It is built only inside
+`docker/core-kernel.Dockerfile` (Debian trixie, Boost headers, CMake), so Windows needs no Boost,
+and is kept out of the root workspace. It vendors Core master at commit `70d9ec7f3d4`
+(2026-07, `CLIENT_VERSION` 31.99), so it is a development snapshot, not a release; the pin is the
+crate version plus the adapter's lock file. Flag bits map one to one onto the kernel's
+`btck_ScriptVerificationFlags`; the same `WITNESS` without `P2SH` refusal applies. The kernel
+reports only invalid / bad index / bad flags / bad spent outputs, so every script rejection is
+`SCRIPT_FAIL`, as with `core`. The kernel decodes a transaction from the front of the buffer and ignores
+trailing bytes, where `libbitcoinconsensus` rejected them (`ERR_TX_SIZE_MISMATCH`); the adapter
+re-encodes the transaction and rejects any length difference as `DESERIALIZE`, like the other
+adapters (found by review before any run depended on it, unit-tested). Comparing `core` with `core-kernel` checks that no script rule
+changed between 26.0 and current master, as well as giving current Core a vote.
 
 **Consequences worth knowing.**
 

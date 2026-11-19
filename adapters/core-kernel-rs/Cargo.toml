@@ -1,0 +1,22 @@
+[package]
+name = "diffuzz-adapter-core-kernel"
+description = "diffuzz adapter around current Bitcoin Core's libbitcoinkernel"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Built only inside docker/core-kernel.Dockerfile: libbitcoinkernel compiles Bitcoin Core from
+# source and needs Boost and CMake, which the Windows workspace does not assume. Kept out of the
+# root workspace (see its `exclude`), with its own lock file.
+[workspace]
+
+[dependencies]
+diffuzz-types = { path = "../../crates/types" }
+serde_json = "1.0.154"
+# Pinned exactly. The Core source lives in the -sys crate (master at 70d9ec7f3d4, 2026-07,
+# version 31.99), so it is pinned too: the implementation under test must never drift.
+bitcoinkernel = "=0.3.2"
+libbitcoinkernel-sys = "=0.4.1"
+
+[lints.rust]
+unsafe_code = "forbid"

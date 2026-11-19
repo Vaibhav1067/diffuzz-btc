@@ -126,8 +126,8 @@ jobs:
           tags: diffuzz-libbitcoin
           load: true
           build-args: JOBS=4
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=libbitcoin
+          cache-to: type=gha,mode=max,scope=libbitcoin
       - name: Build Core adapter
         run: cargo build --locked -p diffuzz-adapter-core -p diffuzz-cli
       - name: Corpus replay (core, libbitcoin)
@@ -137,3 +137,33 @@ jobs:
           cargo run --locked -p diffuzz-cli -- replay
           --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json
           --impls core,libbitcoin
+
+  core-kernel:
+    name: current Core adapter (libbitcoinkernel, Docker build, corpus replay)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Format check (outside the workspace)
+        run: cargo fmt --manifest-path adapters/core-kernel-rs/Cargo.toml -- --check
+      - uses: docker/setup-buildx-action@v3
+      - name: Build adapter image (runs its unit tests)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/core-kernel.Dockerfile
+          tags: diffuzz-core-kernel
+          load: true
+          build-args: JOBS=4
+          cache-from: type=gha,scope=core-kernel
+          cache-to: type=gha,mode=max,scope=core-kernel
+      - name: Build Core 26.0 adapter
+        run: cargo build --locked -p diffuzz-adapter-core -p diffuzz-cli
+      - name: Corpus replay (core 26.0, current core)
+        env:
+          DIFFUZZ_ADAPTER_CORE_KERNEL: adapters/core-kernel-rs/diffuzz-adapter-core-kernel.sh
+        run: >
+          cargo run --locked -p diffuzz-cli -- replay
+          --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json
+          --impls core,core-kernel

@@ -13,7 +13,7 @@ Design details are in `architecture.md`, `flag-mapping.md`, `generators.md` and
 
 | Surface | Implementations | Harness |
 |---|---|---|
-| Script verification (legacy, P2SH, segwit v0, taproot key and script path) | Bitcoin Core 26.0 (`libbitcoinconsensus`), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537 | `diffuzz replay`, `diffuzz fuzz` |
+| Script verification (legacy, P2SH, segwit v0, taproot key and script path) | Bitcoin Core 26.0 (`libbitcoinconsensus`), current Bitcoin Core master 70d9ec7f3d4 (`libbitcoinkernel`), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537 | `diffuzz replay`, `diffuzz fuzz` |
 | Transaction decoding, legacy / BIP143 / BIP341 signature hashes | rust-bitcoin 0.32.102, btcd, NBitcoin (Core abstains: its library exposes neither) | `diffuzz aux` |
 | Our own transaction parser and sighash code vs rust-bitcoin, in-process | `crates/types`, `crates/gen` vs rust-bitcoin | cargo-fuzz targets in `fuzz/` |
 
@@ -27,7 +27,8 @@ real signal.
 
 Of the four interpreters, btcd and libbitcoin are independent designs; NBitcoin follows the
 structure of Core's interpreter closely. libbitcoin runs in a digest-pinned Docker container
-built from source (`docker/libbitcoin.Dockerfile`), without network access.
+built from source (`docker/libbitcoin.Dockerfile`), without network access. Current Core runs
+the same way (`docker/core-kernel.Dockerfile`) as a fifth voter beside Core 26.0.
 
 ## 2. Methodology
 
@@ -83,6 +84,8 @@ release builds, 12 workers, each worker running its own process per implementati
 | D | core, btcd, nbitcoin, libbitcoin | 20261123 | 600 s | 5,577,472 | 9,291 | 2,150,405 | 3,413,947 | 13,120 | 0 |
 | E | core, btcd, nbitcoin, libbitcoin | 20261124 | 7,176 s | 68,086,272 | 9,488 | 26,251,953 | 41,675,524 | 158,795 | 0 |
 | F | core, btcd, nbitcoin, libbitcoin | 20261125 | 300 s | 2,721,536 | 9,066 | 1,049,588 | 1,665,493 | 6,455 | 0 |
+| G | core, btcd, nbitcoin, libbitcoin | 20261127 | 300 s | 3,346,688 | 11,146 | 1,291,915 | 2,046,955 | 7,818 | 0 |
+| H | core, core-kernel, btcd, nbitcoin, libbitcoin | 20261128 | 300 s | 2,560,000 | 8,525 | 987,743 | 1,566,208 | 6,049 | 0 |
 
 Run C is `scripts/run_overnight.sh` (six 10-minute segments, re-signing enabled); a Docker
 build of libbitcoin overlapped its last segments, so its rate is a lower bound. In run D
@@ -94,14 +97,16 @@ Run F is the first after the generators began targeting `SIGHASH_SINGLE` without
 output on purpose (about 1% of cases, see `generators.md`).
 Runs A–F used the skeleton of 1 to 3 inputs and 0 to 3 outputs (up to commit f14253e).
 Later commits draw different cases from the same seed; check out that commit to reproduce
-these numbers.
+these numbers. Run G is the first with the wider skeleton (up to 12 inputs, P2TR among spent
+outputs); run H adds current Core, so five interpreters vote on every case.
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON
 protocol was kept. In run B NBitcoin is the slowest process (3,330/s, p50 284 µs; Core 6,471/s and btcd 4,224/s
 while sharing the machine with it).
 
-Corpus replay (all four): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence.
+Corpus replay (all four): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence. Current
+Core (`core-kernel`) passes all 963 runnable vectors as well, identically to Core 26.0.
 
 In total, about 150 million generated script cases ran through the differential in these runs,
 plus earlier development runs.
@@ -149,8 +154,10 @@ disclosure rule). This section lists only what has been cleared for publication.
 
 - **Not coverage-guided against the implementations.** Feedback is a behavioural signature,
   not branch coverage. Core's C++ is not instrumented, even in the cargo-fuzz targets.
-- **Core 26.0, not current Core.** `libbitcoinconsensus` was removed after 26.x; the adapter
-  uses the last release that has it. Consensus code changes since then are not covered.
+- **Current Core is a development snapshot.** `libbitcoinconsensus` was removed after 26.x, so
+  the main Core adapter is 26.0. Current Core runs through `libbitcoinkernel` (`core-kernel`),
+  pinned to master at 70d9ec7f3d4 (2026-07), not to a release, and only in Docker. It joined
+  in run H, so the long runs A–F compared Core 26.0 only.
 - **No block-level checks.** Only per-input script verification: no `CheckTransaction`,
   sigop counting across a block, weight limits, coinbase rules or contextual checks.
 - **Independence is partial.** btcd and libbitcoin are independent designs; NBitcoin is a

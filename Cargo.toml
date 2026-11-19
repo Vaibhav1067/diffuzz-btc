@@ -12,7 +12,7 @@ members = [
     "adapters/rust-bitcoin",
 ]
 # cargo-fuzz keeps its own workspace; non-Rust adapters have their own build systems.
-exclude = ["fuzz", "adapters/btcd-go", "adapters/libbitcoin-cpp"]
+exclude = ["fuzz", "adapters/btcd-go", "adapters/libbitcoin-cpp", "adapters/core-kernel-rs"]
 
 [workspace.package]
 version = "0.1.0"

@@ -27,6 +27,8 @@ plus pinned adapter versions.
  seed ----> |    gen    | --> |         | -----> | adapter: btcd-go   |  btcd txscript
             +-----------+     |         |        +--------------------+
                               |         | -----> | adapter: libbitcoin|  libbitcoin-system v4 (Docker)
+                              |         |        +--------------------+
+                              |         | -----> | adapter: core-kern.|  current Core, libbitcoinkernel (Docker)
                               +----+----+        +--------------------+
                                    |
                      divergences   v
@@ -99,7 +101,9 @@ drown real signal; they are confined to an opt-in policy mode.
 
 ## Why these oracles
 
-- **Bitcoin Core** is the reference. It is reached through bindings to its consensus code.
+- **Bitcoin Core** is the reference. It is reached through bindings to its consensus code: 26.0
+  through `libbitcoinconsensus` (`core`) and current master through `libbitcoinkernel`
+  (`core-kernel`, Docker).
 - **btcd `txscript`** is an independent Go reimplementation of the interpreter.
 - **libbitcoin-system** is an independent C++ implementation, run in a Docker container.
 - **NBitcoin** is a C# implementation that closely follows Core's interpreter structure.

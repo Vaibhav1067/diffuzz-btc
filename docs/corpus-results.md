@@ -32,6 +32,7 @@ invalid one needs at least one input rejected.
 | `btcd` | txscript/v2 v2.0.1 | 963 / 963 | 0 | 0 | 0 | 0 |
 | `nbitcoin` | NBitcoin 10.0.21 | 963 / 963 | 0 | 0 | 0 | 0 |
 | `libbitcoin` | libbitcoin-system v4.0.10537 (added 2026-11-18) | 956 / 963 | 0 | 7 | 0 | 0 |
+| `core-kernel` | Core master 70d9ec7f3d4, libbitcoinkernel (added 2026-11-19) | 963 / 963 | 0 | 0 | 0 | 0 |
 
 libbitcoin's 7 abstentions are inputs with witness data and `WITNESS` off, a state that cannot
 occur on chain (`flag-mapping.md`). An abstaining vector is neither passed nor failed. With all

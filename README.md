@@ -7,7 +7,7 @@ transaction decoding and signature hashes.
 
 | Surface | Implementations |
 |---|---|
-| Script verification: legacy, P2SH, segwit v0, taproot key and script path | Bitcoin Core 26.0 (`libbitcoinconsensus`), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537 |
+| Script verification: legacy, P2SH, segwit v0, taproot key and script path | Bitcoin Core 26.0 (`libbitcoinconsensus`), current Bitcoin Core master (`libbitcoinkernel`, Docker), btcd `txscript/v2` v2.0.1, NBitcoin 10.0.21, libbitcoin-system v4.0.10537 |
 | Transaction decoding, legacy / BIP143 / BIP341 signature hashes | rust-bitcoin 0.32.102, btcd, NBitcoin, libbitcoin (Core abstains: its library exposes neither) |
 
 Results so far (one Windows machine, November 2026): about 150 million generated script cases
@@ -24,7 +24,9 @@ the .NET SDK for the NBitcoin adapter, and Docker for the libbitcoin adapter (op
 cargo build --release
 scripts/build_adapters.sh --release
 docker build -f docker/libbitcoin.Dockerfile -t diffuzz-libbitcoin .        # optional
+docker build -f docker/core-kernel.Dockerfile -t diffuzz-core-kernel .     # optional, current Core
 export DIFFUZZ_ADAPTER_LIBBITCOIN=adapters/libbitcoin-cpp/diffuzz-adapter-libbitcoin.sh
+export DIFFUZZ_ADAPTER_CORE_KERNEL=adapters/core-kernel-rs/diffuzz-adapter-core-kernel.sh
 ```
 
 Prove every adapter against Core's vectors first:
@@ -70,7 +72,7 @@ crates/oracle    adapter processes, comparison, allowlist, private findings sink
 crates/minimize  delta-debugging minimizer
 crates/triage    bucketing, case features, report writer
 crates/cli       the diffuzz binary and the dashboard template
-adapters/        core-rs, btcd-go, nbitcoin-cs, libbitcoin-cpp, rust-bitcoin
+adapters/        core-rs, core-kernel-rs, btcd-go, nbitcoin-cs, libbitcoin-cpp, rust-bitcoin
 fuzz/            cargo-fuzz targets (nightly)
 vectors/         pinned upstream vectors, see vectors/SOURCES.md
 docs/            architecture, flag mapping, generators, aux protocol, corpus results, write-up
