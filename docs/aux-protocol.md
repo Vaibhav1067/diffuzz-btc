@@ -19,6 +19,7 @@ A field one implementation does not report (NBitcoin reports no `weight`) is not
 | `rust-bitcoin` (0.32.102) | yes | yes | canonical hash types only | yes | the library leaves `OP_CODESEPARATOR` removal to the caller; the adapter strips them as Core's `SerializeScriptCode` does. `p2wsh_signature_hash` hashes the normalized hash type, so non-canonical values abstain. Zero-input transactions abstain on `txinfo` (BIP141 serialization by design). The adapter bounds-checks `input_index`, which the library skips for non-ANYONECANPAY BIP341. |
 | `btcd` (txscript v2.0.1) | yes | parsable scripts only | yes | key path without annex; script path (base leaf) | `CalcSignatureHash` refuses unparsable scriptCode, where Core hashes the bytes. btcd keys prevouts by outpoint, so duplicate outpoints abstain. `NewTxSigHashes` skips the taproot midstate when no prevout is P2TR, so such BIP341 requests abstain. `CalcWitnessSigHash` turns a scriptCode that is exactly a P2WPKH program into the P2PKH-style scriptCode, so BIP143 requests with such a scriptCode abstain. |
 | `nbitcoin` | yes (no weight) | parsable scripts only | parsable scripts only | yes | `GetSignatureHash` parses the scriptCode into ops and throws on truncated pushes, where Core hashes the bytes. `Money` cannot hold an output value of `long.MinValue`, so such transactions abstain on `txinfo` (Core decodes them and rejects them later as `bad-txns-vout-negative`). |
+| `libbitcoin` (libbitcoin-system v4.0.10537) | yes, except zero-input | one-byte hash types, parsable scripts | one-byte hash types | yes, no explicit code-separator position | `transaction::signature_hash` takes the hash type as one byte, so 32-bit legacy/BIP143 values above `0xff` abstain (all of `sighash.json`). The legacy subscript is hashed verbatim, so the adapter strips `OP_CODESEPARATOR` as Core does. BIP341 reads the annex from the input's witness and the code-separator position from interpreter state, so requests that differ abstain; the spent amount is passed explicitly, as libbitcoin's own tests do. Zero-input transactions abstain on `txinfo`: libbitcoin reads `00` as an input count unless the flag is `01`, Core rejects the unknown flag, and both reject such transactions (`empty_transaction` / `bad-txns-vin-empty`). Coinbase transactions abstain on `sighash`. |
 | `core` (libbitcoinconsensus 26.0) | no | no | no | no | the library exposes only script verification; always abstains. |
 
 For a BIP341 script-path request, send both `script_hex` (the leaf script, leaf version 0xc0)
@@ -48,6 +49,9 @@ Results on 2026-11-14:
 * Generated: seeds 1, 2 and 3 with `--count 100000` each (300k checks): no divergence, crash or
   timeout after the adapter preconditions above. Triage found no implementation bug relevant to
   consensus. CI runs seed 1 with 20k generated checks.
+* With libbitcoin as a fifth implementation (2026-11-19): upstream vectors clean (all 7 BIP341
+  digests met, all 633 decodes agree); seed 20261120 with 100k generated checks, 101,140 checks
+  with no divergence after the adapter preconditions above.
 
 ## Building on Windows inside OneDrive
 
