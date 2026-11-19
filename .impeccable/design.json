@@ -1,0 +1,798 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T12:14:07+00:00",
+  "title": "Design System: diffuzz-btc",
+  "extensions": {
+    "colorMeta": {
+      "plane": {
+        "role": "neutral",
+        "displayName": "Paper Plane",
+        "canonical": "#f9f9f7",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeed"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Card-less Surface",
+        "canonical": "#fcfcfb",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeee"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#0b0b0b",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Second Ink",
+        "canonical": "#52514e",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#262523",
+          "#434240",
+          "#62615e",
+          "#83827f",
+          "#a6a5a2",
+          "#cac9c7",
+          "#efeeed"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e1e0d9",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262522",
+          "#43423e",
+          "#62615c",
+          "#83827d",
+          "#a6a5a0",
+          "#cac9c5",
+          "#efeeeb"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#c3c2b7",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262520",
+          "#43423b",
+          "#636259",
+          "#848379",
+          "#a6a59d",
+          "#cac9c2",
+          "#efefe9"
+        ]
+      },
+      "mast": {
+        "role": "neutral",
+        "displayName": "Masthead Black",
+        "canonical": "#0b0b0b",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "mast-ink": {
+        "role": "neutral",
+        "displayName": "Masthead Ink",
+        "canonical": "#fcfcfb",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeee"
+        ]
+      },
+      "mast-ink-2": {
+        "role": "neutral",
+        "displayName": "Masthead Grey",
+        "canonical": "#c3c2b7",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262520",
+          "#43423b",
+          "#636259",
+          "#848379",
+          "#a6a59d",
+          "#cac9c2",
+          "#efefe9"
+        ]
+      },
+      "agree-ok": {
+        "role": "neutral",
+        "displayName": "Agreement Black",
+        "canonical": "#2b2a28",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#262524",
+          "#434240",
+          "#62615f",
+          "#838280",
+          "#a6a5a3",
+          "#cac9c7",
+          "#efeeed"
+        ]
+      },
+      "agree-fail": {
+        "role": "neutral",
+        "displayName": "Agreement Grey",
+        "canonical": "#8f8d85",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423d",
+          "#63615a",
+          "#84827b",
+          "#a7a59f",
+          "#cac9c4",
+          "#efeeea"
+        ]
+      },
+      "known": {
+        "role": "neutral",
+        "displayName": "Allowlist Grey",
+        "canonical": "#dedcd5",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262522",
+          "#43423e",
+          "#63615c",
+          "#84827c",
+          "#a6a5a0",
+          "#cac9c5",
+          "#efeeeb"
+        ]
+      },
+      "known-hatch": {
+        "role": "neutral",
+        "displayName": "Hatch Grey",
+        "canonical": "#9b998f",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262520",
+          "#43423b",
+          "#636159",
+          "#848279",
+          "#a7a59d",
+          "#cbc9c3",
+          "#f0efe9"
+        ]
+      },
+      "critical": {
+        "role": "primary",
+        "displayName": "Signal Red",
+        "canonical": "#d03b3b",
+        "tonalRamp": [
+          "#260000",
+          "#500002",
+          "#7e0b14",
+          "#ae2529",
+          "#d64e4a",
+          "#f37d75",
+          "#ffaaa2",
+          "#ffd7cf"
+        ]
+      },
+      "impl-1": {
+        "role": "secondary",
+        "displayName": "Core Blue (slot 1, Bitcoin Core)",
+        "canonical": "#2a78d6",
+        "tonalRamp": [
+          "#00072b",
+          "#002255",
+          "#004083",
+          "#1660b4",
+          "#3d83da",
+          "#6da7f3",
+          "#9cccff",
+          "#cbf2ff"
+        ]
+      },
+      "impl-2": {
+        "role": "secondary",
+        "displayName": "Signal Orange (slot 2, btcd)",
+        "canonical": "#eb6834",
+        "tonalRamp": [
+          "#250000",
+          "#4d0200",
+          "#791b00",
+          "#a83400",
+          "#cf5929",
+          "#ec855f",
+          "#ffb091",
+          "#ffdcc3"
+        ]
+      },
+      "impl-3": {
+        "role": "secondary",
+        "displayName": "Aqua Green (slot 3, NBitcoin)",
+        "canonical": "#1baf7a",
+        "tonalRamp": [
+          "#001303",
+          "#003117",
+          "#00532f",
+          "#00774a",
+          "#0c9a6a",
+          "#5dbb90",
+          "#93dcb8",
+          "#c6fee1"
+        ]
+      },
+      "impl-4": {
+        "role": "secondary",
+        "displayName": "Ochre Yellow (slot 4, libbitcoin)",
+        "canonical": "#eda100",
+        "tonalRamp": [
+          "#1d0300",
+          "#401900",
+          "#673300",
+          "#905000",
+          "#b57200",
+          "#d3993e",
+          "#f0c07b",
+          "#ffe8b3"
+        ]
+      },
+      "impl-5": {
+        "role": "secondary",
+        "displayName": "Rose (slot 5, rust-bitcoin)",
+        "canonical": "#e87ba4",
+        "tonalRamp": [
+          "#1f000b",
+          "#440b25",
+          "#6d2342",
+          "#993b62",
+          "#bf5d83",
+          "#dd87a5",
+          "#fab1c9",
+          "#ffdcef"
+        ]
+      },
+      "impl-x": {
+        "role": "neutral",
+        "displayName": "Neutral Slot Grey (unlisted implementation)",
+        "canonical": "#9b998f",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262520",
+          "#43423b",
+          "#636159",
+          "#848279",
+          "#a7a59d",
+          "#cbc9c3",
+          "#f0efe9"
+        ]
+      },
+      "plane-dark": {
+        "role": "neutral",
+        "displayName": "Paper Plane (dark)",
+        "canonical": "#0d0d0d",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Card-less Surface (dark)",
+        "canonical": "#1a1a19",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#a5a5a4",
+          "#c9c9c8",
+          "#eeeeee"
+        ]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Ink (dark)",
+        "canonical": "#f0efec",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424240",
+          "#62615f",
+          "#838280",
+          "#a6a5a3",
+          "#cac9c7",
+          "#efeeed"
+        ]
+      },
+      "ink-2-dark": {
+        "role": "neutral",
+        "displayName": "Second Ink (dark)",
+        "canonical": "#c3c2b7",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262520",
+          "#43423b",
+          "#636259",
+          "#848379",
+          "#a6a59d",
+          "#cac9c2",
+          "#efefe9"
+        ]
+      },
+      "rule-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "canonical": "#2c2c2a",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424240",
+          "#61615f",
+          "#828280",
+          "#a5a5a3",
+          "#c9c9c7",
+          "#eeeeed"
+        ]
+      },
+      "rule-strong-dark": {
+        "role": "neutral",
+        "displayName": "Strong Hairline (dark)",
+        "canonical": "#383835",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252523",
+          "#424240",
+          "#61615e",
+          "#82827f",
+          "#a5a5a2",
+          "#c9c9c7",
+          "#eeeeed"
+        ]
+      },
+      "mast-dark": {
+        "role": "neutral",
+        "displayName": "Masthead Black (dark)",
+        "canonical": "#000000",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "mast-ink-dark": {
+        "role": "neutral",
+        "displayName": "Masthead Ink (dark)",
+        "canonical": "#f0efec",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424240",
+          "#62615f",
+          "#838280",
+          "#a6a5a3",
+          "#cac9c7",
+          "#efeeed"
+        ]
+      },
+      "mast-ink-2-dark": {
+        "role": "neutral",
+        "displayName": "Masthead Grey (dark)",
+        "canonical": "#a8a79e",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423c",
+          "#62625a",
+          "#84837b",
+          "#a6a59e",
+          "#cac9c3",
+          "#efefea"
+        ]
+      },
+      "agree-ok-dark": {
+        "role": "neutral",
+        "displayName": "Agreement Black (dark)",
+        "canonical": "#e4e3de",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#262523",
+          "#43423f",
+          "#62615d",
+          "#83827e",
+          "#a6a5a1",
+          "#cac9c6",
+          "#efeeec"
+        ]
+      },
+      "agree-fail-dark": {
+        "role": "neutral",
+        "displayName": "Agreement Grey (dark)",
+        "canonical": "#6f6e68",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262522",
+          "#43423e",
+          "#62615c",
+          "#83827d",
+          "#a6a5a0",
+          "#cac9c5",
+          "#efeeeb"
+        ]
+      },
+      "known-dark": {
+        "role": "neutral",
+        "displayName": "Allowlist Grey (dark)",
+        "canonical": "#3a3a37",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252523",
+          "#424240",
+          "#61615e",
+          "#82827f",
+          "#a5a5a2",
+          "#c9c9c7",
+          "#eeeeed"
+        ]
+      },
+      "known-hatch-dark": {
+        "role": "neutral",
+        "displayName": "Hatch Grey (dark)",
+        "canonical": "#8a897f",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262520",
+          "#43423b",
+          "#636259",
+          "#84837a",
+          "#a6a59d",
+          "#cac9c3",
+          "#efefe9"
+        ]
+      },
+      "impl-1-dark": {
+        "role": "secondary",
+        "displayName": "Core Blue (slot 1, Bitcoin Core) (dark)",
+        "canonical": "#3987e5",
+        "tonalRamp": [
+          "#00072b",
+          "#002355",
+          "#004083",
+          "#1560b3",
+          "#3c83d9",
+          "#6da8f3",
+          "#9cccff",
+          "#cbf2ff"
+        ]
+      },
+      "impl-2-dark": {
+        "role": "secondary",
+        "displayName": "Signal Orange (slot 2, btcd) (dark)",
+        "canonical": "#d95926",
+        "tonalRamp": [
+          "#240000",
+          "#4d0300",
+          "#791c00",
+          "#a73500",
+          "#cf592c",
+          "#eb8561",
+          "#ffb192",
+          "#ffdcc4"
+        ]
+      },
+      "impl-3-dark": {
+        "role": "secondary",
+        "displayName": "Aqua Green (slot 3, NBitcoin) (dark)",
+        "canonical": "#199e70",
+        "tonalRamp": [
+          "#001204",
+          "#003019",
+          "#005232",
+          "#00754d",
+          "#26986e",
+          "#65b993",
+          "#97daba",
+          "#c9fde3"
+        ]
+      },
+      "impl-4-dark": {
+        "role": "secondary",
+        "displayName": "Ochre Yellow (slot 4, libbitcoin) (dark)",
+        "canonical": "#c98500",
+        "tonalRamp": [
+          "#1b0400",
+          "#3e1a00",
+          "#643500",
+          "#8d5200",
+          "#b17400",
+          "#cf9a50",
+          "#edc086",
+          "#ffe8bb"
+        ]
+      },
+      "impl-5-dark": {
+        "role": "secondary",
+        "displayName": "Rose (slot 5, rust-bitcoin) (dark)",
+        "canonical": "#d55181",
+        "tonalRamp": [
+          "#230009",
+          "#4a0022",
+          "#76153e",
+          "#a42d5c",
+          "#cb527d",
+          "#e87fa0",
+          "#ffabc5",
+          "#ffd8eb"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The statement only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section heads, columns 1 to 4."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "Statement supporting paragraph, max 62ch."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Unexplained channel figure."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sub-heads in two-column sections."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Table cells and section descriptions."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Table headers, stamps, legends, notes, tooltip."
+      },
+      "axis": {
+        "displayName": "Axis",
+        "purpose": "Chart ticks, compact stamp."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Seeds, versions, commands, output-type keys."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tooltip-lift",
+        "value": "0 6px 20px rgba(0,0,0,0.18)",
+        "purpose": "Floating tooltip only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-expo-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The bar reveal and the tooltip fade."
+      },
+      {
+        "name": "bar-rule-in",
+        "value": "clip-path inset(0 100% 0 0) to inset(0 0 0 0), 700ms, row delays 0/60/120/180ms",
+        "purpose": "The one authored moment: verdict bars rule in left to right once, when the run table is 30% in view; none under reduced motion or in print."
+      },
+      {
+        "name": "tooltip-fade",
+        "value": "opacity and translateY(4px), 120ms",
+        "purpose": "Tooltip state transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "900px"
+      },
+      {
+        "name": "hairline-2x",
+        "value": "min-resolution: 2dppx (--hair 0.5px)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Masthead",
+      "kind": "nav",
+      "refersTo": "masthead",
+      "description": "The one black field: wordmark, section nav, stamp.",
+      "html": "<header class=\"ds-mast\"><div class=\"ds-mark\">diffuzz-btc <span>results</span></div><nav class=\"ds-nav\"><a href=\"#\">Runs</a><a href=\"#\">Throughput</a><a href=\"#\">Coverage</a><a href=\"#\">Corpus</a></nav><div class=\"ds-stamp\">Generated 2026-11-19 · machine</div></header>",
+      "css": ".ds-mast { display:flex; align-items:center; gap:32px; min-height:64px; padding:0 40px; background:var(--mast,#0b0b0b); color:var(--mast-ink,#fcfcfb); border-bottom:1px solid var(--rule-strong,#c3c2b7); font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; } .ds-mark { font-weight:700; font-size:17px; letter-spacing:-0.01em; } .ds-mark span { font-weight:400; color:var(--mast-ink-2,#c3c2b7); } .ds-nav { display:flex; gap:22px; } .ds-nav a { color:var(--mast-ink-2,#c3c2b7); text-decoration:none; font-size:14px; padding:4px 0; } .ds-nav a:hover { color:var(--mast-ink,#fcfcfb); } .ds-nav a:focus-visible { outline:2px solid var(--mast-ink,#fcfcfb); outline-offset:2px; } .ds-stamp { margin-left:auto; font-size:13px; color:var(--mast-ink-2,#c3c2b7); }"
+    },
+    {
+      "name": "Theme Toggle",
+      "kind": "button",
+      "refersTo": "theme-toggle",
+      "description": "Hairline-outlined masthead button naming the theme it switches to.",
+      "html": "<div class=\"ds-mastbg\"><button class=\"ds-theme\" type=\"button\" aria-pressed=\"false\">Dark</button></div>",
+      "css": ".ds-mastbg { background:var(--mast,#0b0b0b); padding:16px; } .ds-theme { font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; font-size:13px; color:var(--mast-ink,#fcfcfb); background:transparent; cursor:pointer; border:1px solid var(--mast-ink-2,#c3c2b7); border-radius:2px; padding:4px 10px; } .ds-theme:hover { background:var(--mast-ink,#fcfcfb); color:var(--mast,#0b0b0b); } .ds-theme:focus-visible { outline:2px solid var(--mast-ink,#fcfcfb); outline-offset:2px; }"
+    },
+    {
+      "name": "Statement Ledger",
+      "kind": "custom",
+      "refersTo": "channel-cell",
+      "description": "Display-scale claim; the unexplained total sits in a ruled column aligned with the table channel.",
+      "html": "<h1 class=\"ds-claim\"><span class=\"ds-line\">81,768,448 cases.</span><span class=\"ds-ledger\"><span>Unexplained divergences</span><span class=\"ds-tot\">0</span></span></h1>",
+      "css": ".ds-claim { margin:0; font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; font-weight:700; letter-spacing:-0.035em; line-height:1.02; font-size:clamp(38px,5.6vw,80px); color:var(--ink,#0b0b0b); } .ds-line { display:block; } .ds-ledger { display:grid; grid-template-columns:1fr minmax(132px,auto); align-items:baseline; } .ds-tot { text-align:right; padding-left:16px; border-left:1px solid var(--ink,#0b0b0b); }"
+    },
+    {
+      "name": "Data Table with Unexplained Channel",
+      "kind": "custom",
+      "refersTo": "table-cell",
+      "description": "Hairline-ruled table; the rightmost 132px channel shows zero in ink with a check, non-zero in red with a warning icon.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Run</th><th class=\"ds-r\">Cases</th><th class=\"ds-ch\">Unexplained</th></tr></thead><tbody><tr><td>1-hour</td><td class=\"ds-r\">12,400,512</td><td class=\"ds-ch\"><span class=\"ds-st\"><svg class=\"ds-ico\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"8\" r=\"6.25\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"m5 8.2 2 2 4-4.4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>0</span></td></tr><tr><td>example, non-zero</td><td class=\"ds-r\">1,024</td><td class=\"ds-ch ds-bad\"><span class=\"ds-st\"><svg class=\"ds-ico\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M8 1.5 15 14H1z\" fill=\"currentColor\"/><path d=\"M8 6v4M8 11.6v.4\" stroke=\"var(--surface,#fcfcfb)\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg>2</span></td></tr></tbody></table>",
+      "css": ".ds-table { width:100%; border-collapse:collapse; font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; font-size:15px; line-height:1.5; font-variant-numeric:tabular-nums; color:var(--ink,#0b0b0b); } .ds-table th { text-align:left; font-weight:700; font-size:13px; padding:0 12px 8px 0; border-bottom:1px solid var(--ink,#0b0b0b); } .ds-table td { padding:12px 12px 12px 0; border-bottom:1px solid var(--rule,#e1e0d9); } .ds-table tbody tr:hover td { background:color-mix(in srgb, var(--rule,#e1e0d9) 45%, transparent); } .ds-table .ds-r { text-align:right; } .ds-table .ds-ch { width:132px; text-align:right; padding-right:0; padding-left:16px; border-left:1px solid var(--ink,#0b0b0b); } .ds-table td.ds-ch { font-weight:700; font-size:17px; } .ds-table td.ds-bad { color:var(--critical,#d03b3b); } .ds-st { display:inline-flex; gap:6px; align-items:center; } .ds-ico { width:14px; height:14px; }"
+    },
+    {
+      "name": "Segmented Verdict Bar",
+      "kind": "custom",
+      "refersTo": "segment-bar",
+      "description": "8px part-to-whole bar with 2px gaps: agree accept, agree reject, hatched allowlisted, red unexplained only if present.",
+      "html": "<div class=\"ds-seg\" tabindex=\"0\" role=\"img\" aria-label=\"Verdicts: accept 22%, reject 76%, allowlisted 2%\"><span class=\"ds-ok\" style=\"flex:22 0 0\"></span><span class=\"ds-fail\" style=\"flex:76 0 0\"></span><span class=\"ds-known\" style=\"flex:2 0 0\"></span></div>",
+      "css": ".ds-seg { display:flex; gap:2px; height:8px; min-width:120px; max-width:360px; } .ds-seg:focus-visible { outline:2px solid var(--focus,#0b0b0b); outline-offset:2px; } .ds-seg > span { display:block; height:100%; min-width:2px; } .ds-seg > span:first-child { border-radius:4px 0 0 4px; } .ds-seg > span:last-child { border-radius:0 4px 4px 0; } .ds-ok { background:var(--agree-ok,#2b2a28); } .ds-fail { background:var(--agree-fail,#8f8d85); } .ds-known { background:var(--known,#dedcd5) repeating-linear-gradient(135deg, transparent 0 3px, var(--known-hatch,#9b998f) 3px 4px); }"
+    },
+    {
+      "name": "Implementation Keys",
+      "kind": "chip",
+      "refersTo": "impl-1",
+      "description": "Ruled list of fixed-slot swatches, each beside its visible name and mono version.",
+      "html": "<ul class=\"ds-keys\"><li><i style=\"background:var(--impl-1,#2a78d6)\"></i><b>Bitcoin Core</b><span>version</span></li><li><i style=\"background:var(--impl-2,#eb6834)\"></i><b>btcd</b><span>version</span></li><li><i style=\"background:var(--impl-3,#1baf7a)\"></i><b>NBitcoin</b><span>version</span></li><li><i style=\"background:var(--impl-4,#eda100)\"></i><b>libbitcoin</b><span>version</span></li><li><i style=\"background:var(--impl-5,#e87ba4)\"></i><b>rust-bitcoin</b><span>version</span></li></ul>",
+      "css": ".ds-keys { list-style:none; margin:0; padding:0; max-width:320px; font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; font-size:15px; color:var(--ink,#0b0b0b); } .ds-keys li { display:grid; grid-template-columns:14px 1fr; column-gap:10px; padding:9px 0; border-top:1px solid var(--rule,#e1e0d9); } .ds-keys li:last-child { border-bottom:1px solid var(--rule,#e1e0d9); } .ds-keys i { width:10px; height:10px; margin-top:5px; border-radius:2px; } .ds-keys span { grid-column:2; color:var(--ink-2,#52514e); font-size:13px; font-family:ui-monospace, \"Cascadia Mono\", \"SF Mono\", Consolas, monospace; }"
+    },
+    {
+      "name": "Run Tabs",
+      "kind": "nav",
+      "refersTo": "tab-selected",
+      "description": "Underline tabs on an ink hairline; selected is bold ink with a 3px underline.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">1-hour<span> · 4</span></button><button role=\"tab\" aria-selected=\"false\">bench<span> · 2</span></button></div>",
+      "css": ".ds-tabs { display:flex; border-bottom:1px solid var(--ink,#0b0b0b); } .ds-tabs button { font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; font-size:14px; color:var(--ink-2,#52514e); background:none; border:0; cursor:pointer; padding:10px 16px 9px; border-bottom:3px solid transparent; margin-bottom:-1px; } .ds-tabs button span { font-weight:400; color:var(--ink-2,#52514e); } .ds-tabs button:hover { color:var(--ink,#0b0b0b); } .ds-tabs button:focus-visible { outline:2px solid var(--focus,#0b0b0b); outline-offset:2px; } .ds-tabs button[aria-selected=\"true\"] { color:var(--ink,#0b0b0b); font-weight:700; border-bottom-color:var(--ink,#0b0b0b); }"
+    },
+    {
+      "name": "Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "The only lifted element: ink fill, bold title line, 120ms expo-out fade.",
+      "html": "<div class=\"ds-tip\"><b>Run 1-hour</b>All agree: accept: 2,712,113 (21.9%)<br>All agree: reject: 9,401,870 (75.8%)</div>",
+      "css": ".ds-tip { display:inline-block; background:var(--ink,#0b0b0b); color:var(--surface,#fcfcfb); font-family:\"Helvetica Neue\", Helvetica, \"Segoe UI\", Arial, system-ui, sans-serif; font-size:13px; line-height:1.4; padding:8px 10px; border-radius:3px; max-width:280px; box-shadow:0 6px 20px rgba(0,0,0,0.18); font-variant-numeric:tabular-nums; } .ds-tip b { display:block; }"
+    },
+    {
+      "name": "Reproduction Block",
+      "kind": "card",
+      "refersTo": "repro-block",
+      "description": "Mono commands on the plane fill under an ink rule; no radius, no border box.",
+      "html": "<pre class=\"ds-repro\">cargo build --release &amp;&amp; scripts/build_adapters.sh --release\n\ndiffuzz fuzz --seed 42 --duration 3600s --workers 8 --impls core,btcd</pre>",
+      "css": ".ds-repro { margin:0; padding:18px 20px; background:var(--plane,#f9f9f7); border-top:1px solid var(--ink,#0b0b0b); overflow-x:auto; line-height:1.6; font-size:13px; font-family:ui-monospace, \"Cascadia Mono\", \"SF Mono\", Consolas, monospace; color:var(--ink,#0b0b0b); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Evidence Poster",
+    "overview": "A run's results set as a Swiss International Typographic Style poster: one modular 12-column grid, flush-left asymmetric type, and every figure in a column of fixed measure. The page is read, not operated. It opens on a single black masthead field and a display-scale statement (\"N cases. Unexplained divergences 0.\"), then descends through ruled tables and bars where columns never move, only their values.\n\nDensity is that of a data sheet: hairline-ruled rows, tabular numerals, greys for everything that agrees. Colour is withheld so that it means something. It has exactly two jobs, implementation identity and the critical state, and nothing decorative competes with them. Depth is absent; structure comes from rules, measure and weight.\n\nThe world refuses the KPI-card mosaic with donuts and the dark neon metrics board. It is a single self-contained file with no network requests at view time, so the type is a system stack led by Helvetica Neue and no webfont is ever downloaded.",
+    "keyCharacteristics": [
+      "One 12-column grid, 1280px measure, 40px gutters (20px under 900px).",
+      "One black masthead field; everything else is near-white ground and black ink.",
+      "Colour for implementation identity and the critical state only.",
+      "Hairline rules, no container radius, no cards, no decorative shadows or gradients.",
+      "The reserved \"Unexplained\" channel: the rightmost column of every table, 132px, ruled off on the left.",
+      "One authored motion: verdict bars rule in left to right, once."
+    ],
+    "rules": [
+      {
+        "name": "The Two Jobs Rule",
+        "body": "Colour identifies an implementation or flags the critical state. Nothing else on the page is coloured: not headings, not links, not agreement, not allowlisted counts.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Slot Rule",
+        "body": "An implementation keeps the same slot on every chart in every report (core, btcd, nbitcoin, libbitcoin, rust-bitcoin = slots 1 to 5). Never reassign slots by sort order or by which implementations a run used.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Means Non-Zero Rule",
+        "body": "Signal Red appears only when a count is greater than zero, and always with an icon or a visible label. A zero is set in ink with the circled check.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Column Rule",
+        "body": "Every number in a table, bar row, axis or tooltip uses tabular numerals so digits align down the column. Only the display statement uses proportional numerals.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Weights Rule",
+        "body": "400 and 700 only. No italics, no uppercase labels, no tracking on small text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Reserved Channel Rule",
+        "body": "The \"Unexplained\" column is always the rightmost column of every table, always 132px, right-aligned, ruled off on its left with an ink hairline. The statement's ledger total sits in a column of at least the same width with the same rule, so the headline zero reads as the top of that channel.",
+        "section": "layout"
+      },
+      {
+        "name": "The Columns Never Move Rule",
+        "body": "Columns keep their position and measure; only values change. Identity strips keep an empty outlined slot for an absent implementation rather than closing the gap.",
+        "section": "layout"
+      },
+      {
+        "name": "The No-Lift Rule",
+        "body": "Tables, bars, keys and the reproduction block sit on the page with no shadow. The tooltip is the only element allowed one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do place every new figure on the 12-column grid within the 1280px measure.",
+      "Do end every table with the 132px \"Unexplained\" channel, ruled off on the left.",
+      "Do colour an implementation only with its fixed slot (core 1, btcd 2, nbitcoin 3, libbitcoin 4, rust-bitcoin 5) and always beside its visible name.",
+      "Do show Signal Red only for a non-zero count, always with an icon or label.",
+      "Do set agreement in agreement black and grey, and hatch allowlisted parts at 135 degrees.",
+      "Do draw structure with the `--hair` token: ink rules for structure, grey hairlines for rows.",
+      "Do use tabular numerals in every column of figures.",
+      "Do keep segmented bars 8px high with 2px gaps."
+    ],
+    "donts": [
+      "Don't use cards, boxed panels or radius on containers.",
+      "Don't add shadows to anything but the tooltip.",
+      "Don't use decorative gradients; the only gradient functions are the allowlist hatch and the mobile nav's scroll fade.",
+      "Don't colour headings, links, agreement or allowlisted counts.",
+      "Don't add a second authored animation or replay the bar reveal.",
+      "Don't load webfonts, scripts or any network resource; the file must work offline.",
+      "Don't move the channel column, or reorder implementation slots by run."
+    ]
+  }
+}

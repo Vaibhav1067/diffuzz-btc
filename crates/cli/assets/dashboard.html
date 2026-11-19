@@ -123,9 +123,10 @@ th.r, td.r { text-align: right; }
 td.sub { color: var(--ink-2); font-size: 13px; }
 th button { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
 th button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-th button .ar { width: 8px; color: var(--ink-2); }
-th[aria-sort="ascending"] .ar::after { content: "\2191"; color: var(--ink); }
-th[aria-sort="descending"] .ar::after { content: "\2193"; color: var(--ink); }
+th button .ar { width: 10px; height: 10px; display: inline-block; visibility: hidden; color: var(--ink); }
+th button .ar svg { display: block; width: 10px; height: 10px; transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1); }
+th[aria-sort="ascending"] .ar, th[aria-sort="descending"] .ar { visibility: visible; }
+th[aria-sort="descending"] .ar svg { transform: rotate(180deg); }
 /* The reserved channel: always the last column, always the same width. */
 th.ch, td.ch { width: 132px; text-align: right; padding-right: 0; padding-left: 16px;
   border-left: var(--hair) solid var(--ink); }
@@ -165,7 +166,7 @@ td.w, th.w { width: 30%; }
 /* Run selector: standard tabs. */
 .tabs { display: flex; gap: 0; margin: 0 0 20px; border-bottom: var(--hair) solid var(--ink); flex-wrap: wrap; }
 .tabs button { font: inherit; font-size: 14px; color: var(--ink-2); background: none; border: 0; cursor: pointer;
-  padding: 10px 16px 9px; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+  padding: 10px 16px 9px; border-bottom: 3px solid transparent; margin-bottom: calc(-1 * var(--hair)); }
 .tabs button:hover { color: var(--ink); }
 .tabs button[aria-selected="true"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
 
@@ -461,7 +462,7 @@ footer p { margin: 0 0 6px; max-width: 90ch; }
     const rows = runs.slice().sort((a, b) => {
       const va = col ? col.v(a) : a.started_unix, vb = col ? col.v(b) : b.started_unix;
       return (col && col.s === "str" ? String(va).localeCompare(String(vb)) : va - vb) * sort.dir; });
-    const th = (c) => `<th class="${[c.r ? "r" : "", c.w ? "w" : ""].join(" ")}" aria-sort="${sort.k === c.k ? (sort.dir > 0 ? "ascending" : "descending") : "none"}"><button type="button" data-sort="${c.k}">${c.h}<span class="ar"></span></button></th>`;
+    const th = (c) => `<th class="${[c.r ? "r" : "", c.w ? "w" : ""].join(" ")}" aria-sort="${sort.k === c.k ? (sort.dir > 0 ? "ascending" : "descending") : "none"}"><button type="button" data-sort="${c.k}">${c.h}<span class="ar" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M5 8.5V1.5M2 4.5 5 1.5 8 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button></th>`;
     $("runs-table").innerHTML = `<table class="${revealed ? "" : "pending"}"><caption class="vh">Fuzz runs</caption>
       <thead><tr>${COLS.map(th).join("")}<th class="ch">Unexplained</th></tr></thead>
       <tbody>${rows.map((r) => `<tr>${COLS.map((c) => `<td class="${[c.r ? "r" : "", c.w ? "w" : "", c.cls || ""].join(" ")}">${c.cell ? c.cell(r) : esc(c.v(r))}</td>`).join("")}${channel(unexplained(r.classes))}</tr>`).join("")}</tbody></table>`;
