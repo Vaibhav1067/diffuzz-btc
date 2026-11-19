@@ -174,6 +174,11 @@ target/release/diffuzz fuzz --seed 20261117 --duration 10m --workers 12 --impls 
 # Sighash and decoding differential
 target/release/diffuzz aux --impls rust-bitcoin,btcd,nbitcoin,core --seed 1 --count 100000
 
+# Results page: one offline HTML file from the summaries above (CI uploads one per push)
+target/release/diffuzz replay --json out/replay.json --impls core,btcd,nbitcoin,libbitcoin --vectors ...
+target/release/diffuzz aux --json out/aux.json --impls rust-bitcoin,btcd,nbitcoin,core --seed 1 --count 100000
+target/release/diffuzz dashboard --run A=out/a.json --replay out/replay.json --aux out/aux.json   --machine "<this machine>" --out out/dashboard.html
+
 # In-process cargo-fuzz targets (nightly)
 cd fuzz && cargo +nightly fuzz run sighash_diff -- -max_total_time=600
 ```
