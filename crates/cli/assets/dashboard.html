@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>diffuzz-btc results</title>
+<style>
+:root {
+  color-scheme: light;
+  --plane: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --rule: #e1e0d9;
+  --rule-strong: #c3c2b7;
+  --mast: #0b0b0b;
+  --mast-ink: #fcfcfb;
+  --mast-ink-2: #c3c2b7;
+  --agree-ok: #2b2a28;
+  --agree-fail: #8f8d85;
+  --known: #dedcd5;
+  --known-hatch: #9b998f;
+  --critical: #d03b3b;
+  --impl-1: #2a78d6;
+  --impl-2: #eb6834;
+  --impl-3: #1baf7a;
+  --impl-4: #eda100;
+  --impl-5: #e87ba4;
+  --impl-x: #9b998f;
+  --select: #dedcd5;
+  --focus: #0b0b0b;
+  --hair: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+    --rule: #2c2c2a; --rule-strong: #383835; --mast: #000000; --mast-ink: #f0efec; --mast-ink-2: #a8a79e;
+    --agree-ok: #e4e3de; --agree-fail: #6f6e68; --known: #3a3a37; --known-hatch: #8a897f;
+    --impl-1: #3987e5; --impl-2: #d95926; --impl-3: #199e70; --impl-4: #c98500; --impl-5: #d55181;
+    --select: #3a3a37; --focus: #f0efec;
+  }
+}
+@media (min-resolution: 2dppx) { :root { --hair: 0.5px; } }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+  --rule: #2c2c2a; --rule-strong: #383835; --mast: #000000; --mast-ink: #f0efec; --mast-ink-2: #a8a79e;
+  --agree-ok: #e4e3de; --agree-fail: #6f6e68; --known: #3a3a37; --known-hatch: #8a897f;
+  --impl-1: #3987e5; --impl-2: #d95926; --impl-3: #199e70; --impl-4: #c98500; --impl-5: #d55181;
+  --select: #3a3a37; --focus: #f0efec;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--plane); }
+body {
+  margin: 0; color: var(--ink); background: var(--surface);
+  font: 15px/1.5 "Helvetica Neue", Helvetica, "Segoe UI", Arial, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+::selection { background: var(--select); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+code, .mono { font-family: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace; font-size: 0.86em; }
+html { scrollbar-color: var(--rule-strong) var(--plane); }
+
+/* Grid: 12 columns, one measure for every figure. */
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; }
+
+/* Masthead: the one black field. */
+.mast { background: var(--mast); color: var(--mast-ink); border-bottom: var(--hair) solid var(--rule-strong); }
+.mast .grid { align-items: center; min-height: 64px; }
+.mark { grid-column: 1 / span 3; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.mark span { font-weight: 400; color: var(--mast-ink-2); }
+.mast nav { grid-column: 4 / span 6; display: flex; gap: 22px; flex-wrap: wrap; }
+.mast nav a { color: var(--mast-ink-2); text-decoration: none; font-size: 14px; padding: 4px 0; }
+.mast nav a:hover { color: var(--mast-ink); }
+.mast .tools { grid-column: 10 / span 3; display: flex; justify-content: flex-end; gap: 16px; align-items: center; }
+.mast .stamp { color: var(--mast-ink-2); font-size: 13px; text-align: right; }
+.stamp-m { display: none; }
+.theme {
+  font: inherit; font-size: 13px; color: var(--mast-ink); background: transparent; cursor: pointer;
+  border: var(--hair) solid var(--mast-ink-2); border-radius: 2px; padding: 4px 10px;
+}
+.theme:hover { background: var(--mast-ink); color: var(--mast); }
+
+/* Statement. */
+.statement { padding: 56px 0 48px; border-bottom: var(--hair) solid var(--ink); }
+.claim { grid-column: 1 / -1; margin: 0; font-weight: 700; letter-spacing: -0.035em; line-height: 1.02;
+  font-size: clamp(38px, 5.6vw, 80px); text-wrap: balance; }
+.claim .line { display: block; }
+.claim .num { font-variant-numeric: proportional-nums; }
+.claim .bad { color: var(--critical); }
+.claim .dim { color: var(--ink-2); font-weight: 400; }
+.ledger { display: grid; grid-template-columns: 1fr minmax(132px, auto); align-items: baseline; }
+.ledger .tot { text-align: right; padding-left: 16px; border-left: var(--hair) solid var(--ink); }
+.ledger.bad .tot { color: var(--critical); }
+.lede { grid-column: 1 / span 7; margin: 32px 0 0; color: var(--ink-2); font-size: 17px; max-width: 62ch; }
+.keys { grid-column: 9 / span 4; align-self: start; margin: 36px 0 0; padding: 0; list-style: none; }
+.keys li { display: grid; grid-template-columns: 14px 1fr; column-gap: 10px; padding: 9px 0; border-top: var(--hair) solid var(--rule); }
+.keys li:last-child { border-bottom: var(--hair) solid var(--rule); }
+.keys .sw { width: 10px; height: 10px; margin-top: 5px; border-radius: 2px; }
+.keys .n { font-weight: 700; }
+.keys .v { grid-column: 2; color: var(--ink-2); font-size: 13px; }
+
+/* Sections. */
+section { padding: 48px 0 8px; }
+.head { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: baseline; margin-bottom: 20px; }
+.head h2 { grid-column: 1 / span 4; margin: 0; font-size: 24px; letter-spacing: -0.02em; line-height: 1.15; }
+.head p { grid-column: 5 / span 7; margin: 0; color: var(--ink-2); max-width: 68ch; }
+.empty { border-top: var(--hair) solid var(--ink); padding: 20px 0; color: var(--ink-2); }
+
+/* Tables: columns never move, only their values. */
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+thead th { text-align: left; font-weight: 700; font-size: 13px; color: var(--ink); padding: 0 12px 8px 0;
+  border-bottom: var(--hair) solid var(--ink); vertical-align: bottom; white-space: nowrap; }
+tbody td { padding: 12px 12px 12px 0; border-bottom: var(--hair) solid var(--rule); vertical-align: middle; }
+tbody tr:hover td { background: color-mix(in srgb, var(--rule) 45%, transparent); }
+th.r, td.r { text-align: right; }
+td.sub { color: var(--ink-2); font-size: 13px; }
+th button { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+th button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+th button .ar { width: 8px; color: var(--ink-2); }
+th[aria-sort="ascending"] .ar::after { content: "\2191"; color: var(--ink); }
+th[aria-sort="descending"] .ar::after { content: "\2193"; color: var(--ink); }
+/* The reserved channel: always the last column, always the same width. */
+th.ch, td.ch { width: 132px; text-align: right; padding-right: 0; padding-left: 16px;
+  border-left: var(--hair) solid var(--ink); }
+td.ch { font-weight: 700; font-size: 17px; }
+td.ch.zero { color: var(--ink); }
+td.ch.bad { color: var(--critical); }
+td.ch .st { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.ico { width: 14px; height: 14px; flex: none; }
+
+.sws { display: inline-flex; gap: 4px; }
+.sws i { width: 8px; height: 8px; border-radius: 2px; display: block; }
+.sws i.off { background: transparent; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.who { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.who .sw, td.who .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+td.who { display: table-cell; }
+td.who .sw { margin-right: 8px; vertical-align: -1px; }
+.note { margin: 12px 0 0; color: var(--ink-2); font-size: 13px; max-width: 90ch; }
+.runnote { display: none; margin: 0 0 12px; font-weight: 700; }
+.tabs .tn { color: var(--ink-2); font-weight: 400; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Thin segmented bar. */
+.seg { display: flex; gap: 2px; height: 8px; min-width: 120px; }
+td.w, th.w { width: 30%; }
+.seg > span { display: block; height: 100%; min-width: 2px; }
+.seg > span:first-child { border-radius: 4px 0 0 4px; }
+.seg > span:last-child { border-radius: 0 4px 4px 0; }
+.seg > span:only-child { border-radius: 4px; }
+.v-ok { background: var(--agree-ok); }
+.v-fail { background: var(--agree-fail); }
+.v-known { background: var(--known) repeating-linear-gradient(135deg, transparent 0 3px, var(--known-hatch) 3px 4px); }
+.v-bad { background: var(--critical); }
+.legend { display: flex; gap: 20px; flex-wrap: wrap; margin: 0 0 14px; padding: 0; list-style: none; font-size: 13px; color: var(--ink-2); }
+.legend li { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { width: 18px; height: 8px; border-radius: 4px; display: block; }
+
+/* Run selector: standard tabs. */
+.tabs { display: flex; gap: 0; margin: 0 0 20px; border-bottom: var(--hair) solid var(--ink); flex-wrap: wrap; }
+.tabs button { font: inherit; font-size: 14px; color: var(--ink-2); background: none; border: 0; cursor: pointer;
+  padding: 10px 16px 9px; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+
+/* Horizontal bars. */
+.bars { display: grid; grid-template-columns: 160px 1fr 92px 92px; column-gap: 16px; align-items: center; }
+.bars .hd { font-size: 13px; font-weight: 700; padding-bottom: 8px; border-bottom: var(--hair) solid var(--ink); }
+.bars .cell { padding: 11px 0; border-bottom: var(--hair) solid var(--rule); font-variant-numeric: tabular-nums; }
+.bars .name { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.bars .name i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.bars .track { position: relative; display: flex; align-items: center; }
+.bars .bar { height: 18px; border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars .bar.thin { height: 10px; background: var(--agree-ok); }
+.speedbars { grid-template-columns: 160px 1fr 72px 92px 92px; }
+.wrapbars { grid-template-columns: max-content 1fr 64px; }
+.wrapbars .wk { font-size: 13px; white-space: nowrap; }
+.bars .val { font-size: 14px; white-space: nowrap; }
+.bars .r { text-align: right; }
+.axis { display: flex; justify-content: space-between; color: var(--ink-2); font-size: 12px; padding-top: 6px; font-variant-numeric: tabular-nums; }
+
+.two { display: grid; grid-template-columns: 5fr 7fr; gap: 48px; }
+.two h3 { font-size: 15px; margin: 0 0 12px; }
+
+/* Reproduction. */
+.repro pre { margin: 0; padding: 18px 20px; background: var(--plane); border-top: var(--hair) solid var(--ink);
+  overflow-x: auto; line-height: 1.6; font-size: 13px; }
+footer { margin-top: 56px; padding: 22px 0 40px; border-top: var(--hair) solid var(--ink); color: var(--ink-2); font-size: 13px; }
+footer p { margin: 0 0 6px; max-width: 90ch; }
+
+#tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--surface);
+  font-size: 13px; line-height: 1.4; padding: 8px 10px; border-radius: 3px; max-width: 280px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18); opacity: 0; transform: translateY(4px);
+  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  font-variant-numeric: tabular-nums; }
+#tip.on { opacity: 1; transform: none; }
+#tip b { display: block; }
+
+/* The one authored moment: the verdict bars rule in from the left once. */
+@media (prefers-reduced-motion: no-preference) {
+  .pending .seg { clip-path: inset(0 100% 0 0); }
+  .reveal .seg { animation: rule 700ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .reveal tr:nth-child(2) .seg { animation-delay: 60ms; }
+  .reveal tr:nth-child(3) .seg { animation-delay: 120ms; }
+  .reveal tr:nth-child(n+4) .seg { animation-delay: 180ms; }
+  @keyframes rule { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+}
+
+@media (max-width: 900px) {
+  .wrap { padding: 0 20px; }
+  .mark { grid-column: 1 / span 8; }
+  .mast .tools { grid-column: 9 / span 4; }
+  .mast .stamp { display: none; }
+  .stamp-m { display: block; grid-column: 1 / -1; order: 4; color: var(--mast-ink-2); font-size: 12px; padding-bottom: 12px; }
+  .mast nav { grid-column: 1 / -1; order: 3; flex-wrap: nowrap; overflow-x: auto; gap: 18px; padding-bottom: 8px; scrollbar-width: none; }
+  .mast nav a { white-space: nowrap; }
+  .claim, .keys { grid-column: 1 / -1; }
+  .ledger { grid-template-columns: 1fr minmax(56px, auto); }
+  .ledger .tot { padding-left: 12px; }
+  .head h2, .head p { grid-column: 1 / -1; }
+  .head p { margin-top: 6px; }
+  .two { grid-template-columns: 1fr; }
+  .scroll { overflow-x: auto; }
+  .scroll table { min-width: 860px; }
+  .two .scroll table { min-width: 0; }
+  .speedbars { grid-template-columns: 104px 1fr 56px 72px; }
+  .bars .p99 { display: none; }
+  .scroll th.ch, .scroll td.ch { position: sticky; right: 0; background: var(--surface); }
+  .mast nav { -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .lede { grid-column: 1 / -1; }
+}
+@media print {
+  :root, :root[data-theme="dark"] { color-scheme: light; --plane: #ffffff; --surface: #ffffff; --ink: #0b0b0b; --ink-2: #52514e;
+    --rule: #e1e0d9; --rule-strong: #c3c2b7; --agree-ok: #2b2a28; --agree-fail: #8f8d85; --known: #dedcd5; --known-hatch: #9b998f;
+    --impl-1: #2a78d6; --impl-2: #eb6834; --impl-3: #1baf7a; --impl-4: #eda100; --impl-5: #e87ba4; }
+  .mast nav, .theme, .tabs, #tip { display: none; }
+  .mast { background: none; color: var(--ink); border-bottom: 1px solid var(--ink); }
+  .mast .stamp, .mark span { color: var(--ink-2); }
+  body { background: #fff; }
+  .pending .seg { clip-path: none; }
+  .scroll { overflow: visible; }
+  .scroll table { min-width: 0; }
+  .runnote { display: block; }
+  .seg span, .bar, .sws i, .keys .sw, .who .sw, .legend i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  section { break-inside: avoid; }
+}
+@media (forced-colors: active) {
+  .seg > span, .bars .bar, .sws i, .keys .sw, .legend i { forced-color-adjust: none; border: var(--hair) solid CanvasText; }
+}
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap grid">
+    <div class="mark">diffuzz-btc <span>results</span></div>
+    <nav aria-label="Sections">
+      <a href="#runs">Runs</a>
+      <a href="#speed">Throughput</a>
+      <a href="#coverage">Coverage</a>
+      <a href="#corpus">Corpus</a>
+      <a href="#sighash">Sighash</a>
+      <a href="#repro">Reproduce</a>
+    </nav>
+    <div class="tools">
+      <div class="stamp" id="stamp"></div>
+      <button class="theme" id="theme" type="button" aria-pressed="false">Dark</button>
+    </div>
+    <div class="stamp-m" id="stamp-m"></div>
+  </div>
+</header>
+
+<main>
+  <div class="statement">
+    <div class="wrap grid" id="statement"></div>
+  </div>
+
+  <div class="wrap">
+    <section id="runs" aria-labelledby="runs-h">
+      <div class="head">
+        <h2 id="runs-h">Runs</h2>
+        <p>Every case goes to each listed implementation with identical consensus flags; only accept or reject is compared. Unexplained counts disagreements without a documented allowlist entry, plus crashes and timeouts.</p>
+      </div>
+      <ul class="legend" id="runs-legend" aria-label="Verdict legend"></ul>
+      <div class="scroll" id="runs-table"></div>
+    </section>
+
+    <section id="speed" aria-labelledby="speed-h">
+      <div class="head">
+        <h2 id="speed-h">Throughput</h2>
+        <p>Cases per second per adapter process, and per-case latency. One process per implementation per worker; the slowest implementation sets the aggregate rate.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Run" id="speed-tabs"></div>
+      <p class="runnote" id="speed-note"></p>
+      <div id="speed-body" role="tabpanel"></div>
+    </section>
+
+    <section id="coverage" aria-labelledby="cov-h">
+      <div class="head">
+        <h2 id="cov-h">Coverage</h2>
+        <p>How each generator's cases split between agreed accepts and agreed rejects, and which output types they spend. A generator that only produces rejects is testing failure paths only.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Run" id="cov-tabs"></div>
+      <p class="runnote" id="cov-note"></p>
+      <div id="cov-body" role="tabpanel"></div>
+    </section>
+
+    <section id="corpus" aria-labelledby="corpus-h">
+      <div class="head">
+        <h2 id="corpus-h">Corpus</h2>
+        <p>Bitcoin Core's own script and transaction vectors, replayed through every adapter before its answers are trusted. Abstained vectors hit a documented adapter limitation and count as neither pass nor fail.</p>
+      </div>
+      <ul class="legend" id="corpus-legend" aria-label="Corpus legend"></ul>
+      <div class="scroll" id="corpus-body"></div>
+    </section>
+
+    <section id="sighash" aria-labelledby="sig-h">
+      <div class="head">
+        <h2 id="sig-h">Sighash and decoding</h2>
+        <p>Legacy, BIP143 and BIP341 signature hashes and transaction decoding, checked against upstream expected digests and across implementations. An implementation without the operation abstains.</p>
+      </div>
+      <div class="scroll" id="sighash-body"></div>
+    </section>
+
+    <section id="repro" class="repro" aria-labelledby="repro-h">
+      <div class="head">
+        <h2 id="repro-h">Reproduce</h2>
+        <p>Every run is seeded; any case can be regenerated from its seed and index, and every divergence is saved as one self-contained JSON case.</p>
+      </div>
+      <pre id="repro-cmds"></pre>
+    </section>
+
+    <footer>
+      <p>Rates are for the machine named above and are not comparable across machines. Only consensus flags are compared; policy and standardness rules are out of scope.</p>
+      <p>Allowlisted counts are aggregates of narrow, documented entries. Generated by <code>diffuzz dashboard</code>.</p>
+    </footer>
+  </div>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script id="data" type="application/json">"__DIFFUZZ_DATA__"</script>
+<script>
+(() => {
+  "use strict";
+  const raw = JSON.parse(document.getElementById("data").textContent);
+  const D = typeof raw === "string" ? { machine: "", generated_unix: 0, runs: [], replay: null, aux: [] } : raw;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const nf = new Intl.NumberFormat("en-US");
+  const fmt = (n) => nf.format(Math.round(n));
+  const pct = (a, b) => (b ? (100 * a / b) : 0);
+  const pctS = (a, b) => { const p = pct(a, b); return (p > 0 && p < 0.1 ? "<0.1" : p.toFixed(1)) + "%"; };
+  const dur = (s) => s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`;
+  const day = (u) => u ? new Date(u * 1000).toISOString().slice(0, 10) : "";
+
+  // Fixed colour language: an implementation keeps its colour on every chart.
+  const ORDER = ["core", "btcd", "nbitcoin", "libbitcoin", "rust-bitcoin"];
+  const implVar = (name) => { const i = ORDER.indexOf(name); return i < 0 ? "var(--impl-x)" : `var(--impl-${i + 1})`; };
+  const LABEL = { core: "Bitcoin Core", btcd: "btcd", nbitcoin: "NBitcoin", libbitcoin: "libbitcoin", "rust-bitcoin": "rust-bitcoin" };
+  const label = (n) => LABEL[n] || n;
+  const byOrder = (a, b) => (ORDER.indexOf(a) + 99 * (ORDER.indexOf(a) < 0)) - (ORDER.indexOf(b) + 99 * (ORDER.indexOf(b) < 0));
+
+  const unexplained = (c) => (c.HARD_DIVERGE || 0) + (c.CRASH || 0) + (c.TIMEOUT || 0);
+  const ICON_BAD = '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 15 14H1z" fill="currentColor"/><path d="M8 6v4M8 11.6v.4" stroke="var(--surface)" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const ICON_OK = '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m5 8.2 2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const channel = (n) => n
+    ? `<td class="ch bad"><span class="st">${ICON_BAD}${fmt(n)}</span></td>`
+    : `<td class="ch zero"><span class="st">${ICON_OK}0</span></td>`;
+
+  // Theme.
+  const root = document.documentElement;
+  const tbtn = $("theme");
+  const stored = (() => { try { return localStorage.getItem("diffuzz-theme"); } catch { return null; } })();
+  const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  const syncTheme = () => { const d = isDark(); tbtn.textContent = d ? "Light" : "Dark"; tbtn.setAttribute("aria-pressed", String(d)); tbtn.setAttribute("aria-label", d ? "Switch to light theme" : "Switch to dark theme"); };
+  if (stored) root.dataset.theme = stored;
+  tbtn.addEventListener("click", () => { root.dataset.theme = isDark() ? "light" : "dark"; try { localStorage.setItem("diffuzz-theme", root.dataset.theme); } catch {} syncTheme(); });
+  syncTheme();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTheme);
+
+  // Masthead stamp.
+  $("stamp").textContent = $("stamp-m").textContent = [D.generated_unix ? `Generated ${day(D.generated_unix)}` : "", D.machine].filter(Boolean).join(" · ");
+
+  // Statement.
+  const runs = D.runs || [];
+  const total = runs.reduce((a, r) => a + r.cases, 0);
+  const bad = runs.reduce((a, r) => a + unexplained(r.classes), 0);
+  const impls = [...new Map(runs.flatMap((r) => r.impls).map((i) => [i.name, i])).values()].sort((a, b) => byOrder(a.name, b.name));
+  const st = $("statement");
+  if (!runs.length) {
+    st.innerHTML = `<h1 class="claim"><span class="line">No runs yet.</span><span class="line dim">Generate this page from a fuzz summary.</span></h1>
+      <p class="lede">Run <code>diffuzz fuzz --summary out/run.json</code>, then <code>diffuzz dashboard --run out/run.json</code>.</p>`;
+  } else {
+    st.innerHTML = `<h1 class="claim">
+        <span class="line"><span class="num">${fmt(total)}</span> cases.</span>
+        <span class="ledger ${bad ? "bad" : ""}"><span>Unexplained ${bad === 1 ? "divergence" : "divergences"}</span><span class="tot num">${fmt(bad)}</span></span>
+      </h1>
+      <p class="lede">${runs.length} ${runs.length === 1 ? "run" : "runs"} across ${impls.length} script ${impls.length === 1 ? "interpreter" : "interpreters"}. Each case went to every interpreter of its run with identical consensus flags; a disagreement is either matched by a documented allowlist entry or counted here.</p>
+      <ul class="keys" aria-label="Implementations">${impls.map((i) => `<li><span class="sw" style="background:${implVar(i.name)}"></span><span class="n">${esc(label(i.name))}</span><span class="v mono">${esc(i.version)}</span></li>`).join("")}</ul>`;
+  }
+
+  // Tooltip: plain text only, first line as its title. Escape closes it.
+  const tip = $("tip");
+  const tipText = (title, lines) => esc([title, ...lines].join("\n"));
+  const showTip = (el, x, y) => {
+    const [title, ...lines] = el.dataset.tip.split("\n");
+    const b = document.createElement("b"); b.textContent = title;
+    tip.replaceChildren(b, ...lines.flatMap((l, i) => (i ? [document.createElement("br"), document.createTextNode(l)] : [document.createTextNode(l)])));
+    tip.classList.add("on");
+    const r = tip.getBoundingClientRect(); let L = x + 14, T = y + 14;
+    if (L + r.width > innerWidth - 8) L = x - r.width - 14; if (T + r.height > innerHeight - 8) T = y - r.height - 14;
+    tip.style.left = Math.max(8, L) + "px"; tip.style.top = Math.max(8, T) + "px"; };
+  document.addEventListener("pointermove", (e) => { const el = e.target.closest("[data-tip]"); if (el) showTip(el, e.clientX, e.clientY); else tip.classList.remove("on"); });
+  document.addEventListener("focusin", (e) => { const el = e.target.closest("[data-tip]"); if (el) { const b = el.getBoundingClientRect(); showTip(el, b.left, b.bottom); } });
+  document.addEventListener("focusout", () => tip.classList.remove("on"));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") tip.classList.remove("on"); });
+
+  // Part-to-whole bar. `names` relabels the parts for tables that are not verdict splits.
+  const PARTS = [["AGREE_OK", "v-ok", "All agree: accept"], ["AGREE_FAIL", "v-fail", "All agree: reject"], ["KNOWN", "v-known", "Allowlisted difference"]];
+  const segBar = (classes, cases, title, names = {}) => {
+    const parts = PARTS.map(([k, c, n]) => [classes[k] || 0, c, names[k] || n]);
+    const u = unexplained(classes); if (u) parts.push([u, "v-bad", names.HARD_DIVERGE || "Unexplained"]);
+    const lines = parts.filter((p) => p[0]).map(([v, , n]) => `${n}: ${fmt(v)} (${pctS(v, cases)})`);
+    return `<div class="seg" tabindex="0" role="img" aria-label="${esc(title)}: ${esc(lines.join("; "))}" data-tip="${tipText(title, lines)}">${
+      parts.filter((p) => p[0]).map(([v, c]) => `<span class="${c}" style="flex:${v} 0 0"></span>`).join("")}</div>`;
+  };
+  const legend = (host, items) => { $(host).innerHTML = items.map(([c, n]) => `<li><i class="${c}"></i>${esc(n)}</li>`).join(""); $(host).hidden = !items.length; };
+
+  // Identity strip: every slot always present, so position encodes identity as well as colour.
+  const strip = (names) => {
+    const slots = ORDER.slice(0, 4);
+    const extra = names.filter((n) => !slots.includes(n));
+    return `<span class="sws" role="img" aria-label="${esc(names.map(label).join(", "))}">${slots.map((n) => names.includes(n)
+      ? `<i style="background:${implVar(n)}"></i>` : `<i class="off"></i>`).join("")}${extra.map((n) => `<i style="background:${implVar(n)}"></i>`).join("")}</span>`;
+  };
+
+  // Runs table, sortable.
+  legend("runs-legend", runs.length ? [["v-ok", "All agree: accept"], ["v-fail", "All agree: reject"], ["v-known", "Allowlisted difference"], ...(bad ? [["v-bad", "Unexplained"]] : [])] : []);
+  const COLS = [
+    { k: "label", h: "Run", v: (r) => r.label, s: "str" },
+    { k: "impls", h: "Implementations", v: (r) => r.impls.length, s: "num", cell: (r) => `${strip(r.impls.map((i) => i.name))} <span class="sub">${r.impls.length}</span>` },
+    { k: "seed", h: "Seed", v: (r) => r.seed, s: "num", cell: (r) => `<span class="mono">${r.seed}</span>`, cls: "sub" },
+    { k: "dur", h: "Duration", v: (r) => r.duration_secs, s: "num", cell: (r) => dur(r.duration_secs), r: 1 },
+    { k: "cases", h: "Cases", v: (r) => r.cases, s: "num", cell: (r) => fmt(r.cases), r: 1 },
+    { k: "rate", h: "Cases/s", v: (r) => r.cases_per_sec, s: "num", cell: (r) => fmt(r.cases_per_sec), r: 1 },
+    { k: "split", h: "Verdicts", w: 1, v: (r) => pct(r.classes.AGREE_OK || 0, r.cases), s: "num", cell: (r) => segBar(r.classes, r.cases, `Run ${r.label}`) },
+    { k: "known", h: "Allowlisted", v: (r) => r.classes.KNOWN || 0, s: "num", cell: (r) => fmt(r.classes.KNOWN || 0), r: 1 },
+  ];
+  let sort = { k: "started", dir: 1 };
+  // The one authored moment plays once, when the run table first comes into view.
+  let revealed = !("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const runsTable = () => {
+    if (!runs.length) { $("runs-table").innerHTML = `<div class="empty">No fuzz summaries were given to <code>diffuzz dashboard --run</code>.</div>`; return; }
+    const col = COLS.find((c) => c.k === sort.k);
+    const rows = runs.slice().sort((a, b) => {
+      const va = col ? col.v(a) : a.started_unix, vb = col ? col.v(b) : b.started_unix;
+      return (col && col.s === "str" ? String(va).localeCompare(String(vb)) : va - vb) * sort.dir; });
+    const th = (c) => `<th class="${[c.r ? "r" : "", c.w ? "w" : ""].join(" ")}" aria-sort="${sort.k === c.k ? (sort.dir > 0 ? "ascending" : "descending") : "none"}"><button type="button" data-sort="${c.k}">${c.h}<span class="ar"></span></button></th>`;
+    $("runs-table").innerHTML = `<table class="${revealed ? "" : "pending"}"><caption class="vh">Fuzz runs</caption>
+      <thead><tr>${COLS.map(th).join("")}<th class="ch">Unexplained</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr>${COLS.map((c) => `<td class="${[c.r ? "r" : "", c.w ? "w" : "", c.cls || ""].join(" ")}">${c.cell ? c.cell(r) : esc(c.v(r))}</td>`).join("")}${channel(unexplained(r.classes))}</tr>`).join("")}</tbody></table>`;
+  };
+  $("runs-table").addEventListener("click", (e) => { const b = e.target.closest("[data-sort]"); if (!b) return;
+    sort = { k: b.dataset.sort, dir: sort.k === b.dataset.sort ? -sort.dir : (b.dataset.sort === "label" ? 1 : -1) };
+    runsTable(); const nb = $("runs-table").querySelector(`[data-sort="${b.dataset.sort}"]`); if (nb) nb.focus(); });
+  runsTable();
+  if (!revealed) {
+    const io = new IntersectionObserver((es) => { if (!es.some((e) => e.isIntersecting)) return;
+      revealed = true; io.disconnect(); const t = $("runs-table").querySelector("table"); if (t) { t.classList.remove("pending"); t.classList.add("reveal"); } }, { threshold: 0.3 });
+    io.observe($("runs-table"));
+  }
+
+  // Run tabs shared by throughput and coverage. Default: the run with the most implementations, latest first.
+  const pick = runs.slice().sort((a, b) => b.impls.length - a.impls.length || b.started_unix - a.started_unix)[0];
+  const tabs = (host, current, onPick) => {
+    $(host).innerHTML = runs.map((r, i) => `<button type="button" role="tab" id="${host}-${i}" aria-selected="${r === current}" tabindex="${r === current ? 0 : -1}" data-i="${i}">${esc(r.label)}<span class="tn"> · ${r.impls.length}</span></button>`).join("");
+    $(host).onclick = (e) => { const b = e.target.closest("[data-i]"); if (b) onPick(runs[+b.dataset.i], true); };
+    $(host).onkeydown = (e) => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return; e.preventDefault();
+      const i = runs.indexOf(current); const n = e.key === "Home" ? 0 : e.key === "End" ? runs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : runs.length - 1)) % runs.length; onPick(runs[n], true); };
+  };
+  const runNote = (host, run) => { $(host).textContent = `Run ${run.label}: ${run.impls.length} implementations, ${dur(run.duration_secs)}, seed ${run.seed}`; };
+
+  const speed = (run, focus) => {
+    if (!run) { $("speed-body").innerHTML = `<div class="empty">No runs.</div>`; return; }
+    tabs("speed-tabs", run, speed); runNote("speed-note", run); if (focus) $("speed-tabs").querySelector('[aria-selected="true"]').focus();
+    $("speed-body").setAttribute("aria-labelledby", `speed-tabs-${runs.indexOf(run)}`);
+    const list = run.impls.slice().sort((a, b) => b.cases_per_sec_per_process - a.cases_per_sec_per_process);
+    const max = Math.max(...list.map((i) => i.cases_per_sec_per_process), 1);
+    const step = Math.pow(10, Math.floor(Math.log10(max))); const top = Math.ceil(max / step) * step;
+    $("speed-body").innerHTML = `<div class="bars speedbars">
+      <div class="hd">Implementation</div><div class="hd">Cases per second per process</div><div class="hd r">Rate</div><div class="hd r">p50</div><div class="hd r p99">p99</div>
+      ${list.map((i) => `<div class="cell name"><i style="background:${implVar(i.name)}"></i>${esc(label(i.name))}</div>
+        <div class="cell track" tabindex="0" data-tip="${tipText(label(i.name), [i.version, `${fmt(i.cases_per_sec_per_process)} cases/s per process`, `p50 ${fmt(i.p50_us)} µs · p99 ${fmt(i.p99_us)} µs`, `${i.restarts} restarts`])}" aria-label="${esc(label(i.name))}: ${fmt(i.cases_per_sec_per_process)} cases per second per process">
+          <span class="bar" style="width:${(100 * i.cases_per_sec_per_process / top).toFixed(2)}%;background:${implVar(i.name)}"></span></div>
+        <div class="cell r">${fmt(i.cases_per_sec_per_process)}</div><div class="cell r">${fmt(i.p50_us)} µs</div><div class="cell r p99">${fmt(i.p99_us)} µs</div>`).join("")}
+      <div></div><div class="axis" aria-hidden="true"><span>0</span><span>${fmt(top / 2)}</span><span>${fmt(top)}</span></div><div></div><div></div><div class="p99"></div>
+    </div>`;
+  };
+  speed(pick);
+
+  const coverage = (run, focus) => {
+    if (!run) { $("cov-body").innerHTML = `<div class="empty">No runs.</div>`; return; }
+    tabs("cov-tabs", run, coverage); runNote("cov-note", run); if (focus) $("cov-tabs").querySelector('[aria-selected="true"]').focus();
+    $("cov-body").setAttribute("aria-labelledby", `cov-tabs-${runs.indexOf(run)}`);
+    const cats = Object.entries(run.by_category || {}).map(([k, c]) => [k.replace(/^gen\//, ""), c, Object.values(c).reduce((a, b) => a + b, 0)]).sort((a, b) => b[2] - a[2]);
+    const wr = Object.entries(run.wrappers || {}).sort((a, b) => b[1] - a[1]);
+    const wmax = Math.max(...wr.map((w) => w[1]), 1);
+    $("cov-body").innerHTML = `<div class="two">
+      <div><h3>Output types</h3>${wr.length ? `<div class="bars wrapbars">
+        ${wr.map(([k, n]) => `<div class="cell mono wk">${esc(k)}</div><div class="cell track" tabindex="0" data-tip="${tipText(k, [`${fmt(n)} cases (${pctS(n, run.cases)})`])}" aria-label="${esc(k)}: ${fmt(n)} cases"><span class="bar thin" style="width:${(100 * n / wmax).toFixed(2)}%"></span></div><div class="cell r">${pctS(n, run.cases)}</div>`).join("")}</div>
+        <p class="note">Bars scale to the most common type; figures are shares of all cases.</p>` : `<div class="empty">This summary has no output-type counts.</div>`}</div>
+      <div class="scroll"><h3>Generators</h3>${cats.length ? `<table><thead><tr><th>Generator</th><th class="w">Verdicts</th><th class="r">Accepted</th><th class="r">Cases</th><th class="ch">Unexplained</th></tr></thead><tbody>
+        ${cats.map(([k, c, n]) => `<tr><td>${esc(k)}</td><td class="w">${segBar(c, n, k)}</td><td class="r">${pctS(c.AGREE_OK || 0, n)}</td><td class="r">${fmt(n)}</td>${channel(unexplained(c))}</tr>`).join("")}</tbody></table>` : `<div class="empty">This summary has no per-generator counts.</div>`}</div>
+    </div>`;
+  };
+  coverage(pick);
+
+  // Corpus.
+  const rp = D.replay;
+  const CORPUS = { AGREE_OK: "Passed", KNOWN: "Abstained", HARD_DIVERGE: "Failed" };
+  const corpusBad = rp ? rp.impls.reduce((a, i) => a + i.failed + i.crashes + i.timeouts, 0) : 0;
+  legend("corpus-legend", rp ? [["v-ok", "Passed"], ["v-known", "Abstained (documented limitation)"], ...(corpusBad ? [["v-bad", "Failed, crashed or timed out"]] : [])] : []);
+  $("corpus-body").innerHTML = !rp ? `<div class="empty">No corpus replay in this report. Run <code>diffuzz replay --json out/replay.json</code> and pass it with <code>--replay</code>.</div>` :
+    `<table><thead><tr><th>Implementation</th><th>Version</th><th class="w">Vectors met</th><th class="r">Passed</th><th class="r">Abstained</th><th class="ch">Unexplained</th></tr></thead><tbody>
+    ${rp.impls.slice().sort((a, b) => byOrder(a.name, b.name)).map((i) => { const run = i.passed + i.failed + i.abstained + i.crashes + i.timeouts;
+      return `<tr><td class="who"><span class="sw" style="background:${implVar(i.name)}"></span><b>${esc(label(i.name))}</b></td><td class="sub mono">${esc(i.version)}</td>
+      <td class="w">${segBar({ AGREE_OK: i.passed, KNOWN: i.abstained, HARD_DIVERGE: i.failed + i.crashes + i.timeouts }, run, label(i.name), CORPUS)}</td>
+      <td class="r">${fmt(i.passed)}</td><td class="r">${fmt(i.abstained)}</td>${channel(i.failed + i.crashes + i.timeouts)}</tr>`; }).join("")}
+    </tbody></table><p class="note">${fmt(rp.vectors)} runnable vectors (${fmt(rp.cases)} cases) from ${rp.files.map((f) => `<code>${esc(f.split(/[\\/]/).pop())}</code>`).join(", ")}; ${fmt(rp.skipped)} skipped because their verdict depends on policy flags or non-script checks. Unexplained counts failed vectors, crashes and timeouts.</p>`;
+
+  // Sighash.
+  const aux = D.aux || [];
+  const auxNames = [...new Set(aux.flatMap((a) => a.impls.map((i) => i.name)))].sort(byOrder);
+  $("sighash-body").innerHTML = !aux.length ? `<div class="empty">No sighash results in this report. Run <code>diffuzz aux --json out/aux.json</code> and pass it with <code>--aux</code>.</div>` :
+    `<table><thead><tr><th>Run</th><th class="r">Checks</th><th class="r">Generated</th>${auxNames.map((n) => `<th class="r"><span class="who"><span class="sw" style="background:${implVar(n)}"></span>${esc(label(n))}</span></th>`).join("")}<th class="ch">Unexplained</th></tr></thead><tbody>
+    ${aux.map((a) => `<tr><td><b>${esc(a.label)}</b>${a.generated ? `<div class="sub mono">seed ${a.seed}</div>` : ""}</td><td class="r">${fmt(a.checks)}</td><td class="r">${fmt(a.generated)}</td>
+      ${auxNames.map((n) => { const i = a.impls.find((x) => x.name === n); return !i ? `<td class="r sub">not run</td>`
+        : `<td class="r">${i.answered ? fmt(i.answered) : `<span class="sub">none</span>`}<div class="sub">${fmt(i.abstained)} abstained</div></td>`; }).join("")}
+      ${channel(a.divergences + a.impls.reduce((s, i) => s + i.wrong + i.failed, 0))}</tr>`).join("")}
+    </tbody></table><p class="note">Each cell counts the checks an implementation answered; the line below counts those it abstained on (operation not provided, or a documented API limitation). Unexplained counts cross-implementation disagreements, wrong expected digests, crashes and timeouts.</p>`;
+
+  // Reproduction commands, from the runs themselves.
+  const implList = (r) => r.impls.map((i) => i.name).sort(byOrder).join(",");
+  const cmd = (r) => /segment/.test(r.stop_reason || "")
+    ? `IMPLS=${implList(r)} scripts/run_overnight.sh ${Math.max(1, Math.round(r.duration_secs / 3600))} ${r.workers} ${r.seed}`
+    : `diffuzz fuzz --seed ${r.seed} --duration ${Math.round(r.duration_secs)}s --workers ${r.workers} --impls ${implList(r)}`;
+  const anyKnown = runs.some((r) => (r.classes.KNOWN || 0) > 0);
+  $("repro-cmds").textContent = [
+    "cargo build --release && scripts/build_adapters.sh --release",
+    "diffuzz replay --impls core,btcd,nbitcoin,libbitcoin \\\n  --vectors vectors/core/script_tests.json vectors/core/tx_valid.json vectors/core/tx_invalid.json",
+    ...runs.map((r) => `# ${r.label}\n${cmd(r)}`),
+    ...(anyKnown ? ["# Runs with allowlisted cases matched them against --known-dir entries that are not part of\n# this report; without those entries a run stops at the first such case, by design."] : []),
+  ].join("\n\n");
+})();
+</script>
+</body>
+</html>

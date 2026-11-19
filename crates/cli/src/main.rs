@@ -17,6 +17,7 @@ use diffuzz_oracle::runner::Differential;
 use diffuzz_types::Case;
 
 mod auxcmd;
+mod dashboard;
 mod fuzz;
 mod replay;
 
@@ -51,6 +52,28 @@ enum Command {
     ExportCoreVector(CheckArgs),
     /// Secondary surface: tx decoding and sighash differential over upstream vectors.
     Aux(AuxArgs),
+    /// Write a self-contained HTML results page from run, replay and aux summaries.
+    Dashboard(DashboardArgs),
+}
+
+#[derive(Args)]
+struct DashboardArgs {
+    /// Fuzz run summary (`fuzz --summary`, `run_overnight.sh` summary.json), as `LABEL=PATH`
+    /// or a bare path. Repeatable.
+    #[arg(long = "run")]
+    runs: Vec<String>,
+    /// Replay summary written by `replay --json`.
+    #[arg(long)]
+    replay: Option<PathBuf>,
+    /// Aux summary written by `aux --json`, as `LABEL=PATH` or a bare path. Repeatable.
+    #[arg(long = "aux")]
+    aux: Vec<String>,
+    /// Description of the machine the runs ran on, shown in the masthead.
+    #[arg(long, default_value = "")]
+    machine: String,
+    /// Output HTML file.
+    #[arg(long, default_value = "out/dashboard.html")]
+    out: PathBuf,
 }
 
 #[derive(Args)]
@@ -79,6 +102,9 @@ struct AuxArgs {
     /// Number of generated checks to run after the upstream vectors.
     #[arg(long, default_value_t = 0)]
     count: u64,
+    /// Also write a machine-readable summary (for `diffuzz dashboard --aux`).
+    #[arg(long)]
+    json: Option<PathBuf>,
 }
 
 /// Options shared by every command that runs the differential oracle.
@@ -120,6 +146,9 @@ struct ReplayArgs {
     /// Maximum mismatches listed per implementation and file.
     #[arg(long, default_value_t = 50)]
     max_listed: usize,
+    /// Also write a machine-readable summary (for `diffuzz dashboard --replay`).
+    #[arg(long)]
+    json: Option<PathBuf>,
     #[command(flatten)]
     oracle: OracleArgs,
 }
@@ -441,11 +470,16 @@ fn load_weights(path: &Path) -> Result<Weights, String> {
 fn cmd_replay(args: &ReplayArgs) -> Result<bool, String> {
     let mut diff = build_oracle(&args.oracle)?;
     let mut clean = true;
+    let mut reports = Vec::new();
     for path in &args.vectors {
         let loaded = replay::load_file(path)?;
         let report = replay::run(&path.display().to_string(), &loaded, &mut diff);
         print!("{}", replay::render(&report, args.max_listed));
         clean &= report.clean();
+        reports.push(report);
+    }
+    if let Some(out) = &args.json {
+        write_json(out, &dashboard::replay_summary(&reports))?;
     }
     print!("{}", diff.metrics.render());
     println!(
@@ -616,6 +650,9 @@ fn cmd_aux(args: &AuxArgs) -> Result<bool, String> {
         .map_err(|e| format!("{}: {e}", args.findings_dir.display()))?;
     let report = auxcmd::run(&checks, &mut adapters, &args.findings_dir)?;
     print!("{}", auxcmd::render(&report, args.max_listed));
+    if let Some(out) = &args.json {
+        write_json(out, &dashboard::aux_summary(&report, args.seed, args.count))?;
+    }
     let clean = report.clean();
     println!(
         "{}",
@@ -626,6 +663,56 @@ fn cmd_aux(args: &AuxArgs) -> Result<bool, String> {
         }
     );
     Ok(clean)
+}
+
+fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    let text = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
+    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+fn cmd_dashboard(args: &DashboardArgs) -> Result<bool, String> {
+    let payload = dashboard::Payload {
+        machine: args.machine.clone(),
+        generated_unix: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+        runs: args
+            .runs
+            .iter()
+            .map(|r| dashboard::load_run(r))
+            .collect::<Result<_, _>>()?,
+        replay: args
+            .replay
+            .as_deref()
+            .map(dashboard::load_replay)
+            .transpose()?,
+        aux: args
+            .aux
+            .iter()
+            .map(|a| dashboard::load_aux(a))
+            .collect::<Result<_, _>>()?,
+    };
+    let html = dashboard::render(&payload)?;
+    if let Some(dir) = args.out.parent().filter(|d| !d.as_os_str().is_empty()) {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    std::fs::write(&args.out, html).map_err(|e| format!("{}: {e}", args.out.display()))?;
+    println!(
+        "dashboard: {} run(s), replay {}, {} aux run(s) -> {}",
+        payload.runs.len(),
+        if payload.replay.is_some() {
+            "yes"
+        } else {
+            "no"
+        },
+        payload.aux.len(),
+        args.out.display()
+    );
+    Ok(true)
 }
 
 fn main() -> ExitCode {
@@ -640,6 +727,7 @@ fn main() -> ExitCode {
         Command::Report(args) => cmd_report(args),
         Command::ExportCoreVector(args) => cmd_export(args),
         Command::Aux(args) => cmd_aux(args),
+        Command::Dashboard(args) => cmd_dashboard(args),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
