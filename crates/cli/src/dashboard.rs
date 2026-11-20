@@ -4,7 +4,9 @@
 //! (`fuzz --summary`, `run_overnight.sh`'s `summary.json`), a replay summary (`replay --json`)
 //! and aux summaries (`aux --json`). They are read into the publishable types below, which
 //! deliberately have no field for allowlist entry names, finding paths or case contents: the
-//! page cannot leak what its payload cannot hold (rule 2). Unknown JSON fields are ignored.
+//! page cannot leak what its payload cannot hold (rule 2). A run with unexplained divergences is
+//! refused outright, since even its per-category counts point at an undisclosed bug. Unknown
+//! JSON fields are ignored.
 //!
 //! The page itself is `assets/dashboard.html`; the payload is embedded as JSON and rendered by
 //! the page's own script. No network access is needed to view it.
@@ -177,6 +179,13 @@ pub fn split_label(arg: &str) -> (String, &Path) {
 pub fn load_run(arg: &str) -> Result<RunCard, String> {
     let (label, path) = split_label(arg);
     let mut card: RunCard = read_json(path)?;
+    // Even a count says where an undisclosed bug is (rule 2): review it before publishing.
+    if card.classes.get("HARD_DIVERGE").is_some_and(|n| *n > 0) {
+        return Err(format!(
+            "{}: run has unexplained divergences; review findings/private/ first",
+            path.display()
+        ));
+    }
     card.label = label;
     Ok(card)
 }
@@ -291,6 +300,19 @@ mod tests {
         assert!(html.contains("\"AGREE_OK\":6"));
         // The page reads `impls`; summaries call the field `adapters`.
         assert!(html.contains("\"impls\":[{\"name\":\"core\""));
+    }
+
+    #[test]
+    fn runs_with_hard_divergences_are_refused() {
+        let dir = std::env::temp_dir().join(format!("diffuzz-dash-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("run.json");
+        std::fs::write(&path, SUMMARY.replace("\"KNOWN\":1", "\"HARD_DIVERGE\":1")).unwrap();
+        let err = load_run(path.to_str().unwrap()).unwrap_err();
+        assert!(err.contains("findings/private"), "{err}");
+        std::fs::write(&path, SUMMARY).unwrap();
+        assert!(load_run(path.to_str().unwrap()).is_ok());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

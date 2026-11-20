@@ -149,6 +149,8 @@ fn handle_line(line: &str) -> Response {
     }
 }
 
+// shortcut: no per-request watchdog (libbitcoin's adapter uses alarm()), so a hung request
+// leaves its container running after the orchestrator's timeout; add one if timeouts appear.
 fn main() -> io::Result<()> {
     let stdin = io::stdin().lock();
     let mut stdout = io::stdout().lock();

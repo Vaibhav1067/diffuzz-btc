@@ -309,12 +309,10 @@ func run(in io.Reader, out io.Writer) error {
 			if encErr := enc.Encode(out); encErr != nil {
 				return encErr
 			}
-			// Flush when no further request is already buffered, so pipelined batches are
-			// answered with few writes while single requests are answered immediately.
-			if rd.Buffered() == 0 {
-				if flushErr := wr.Flush(); flushErr != nil {
-					return flushErr
-				}
+			// Flush every answer: if a later request hangs, earlier answers must already be out,
+			// or the orchestrator blames a timeout on the wrong case.
+			if flushErr := wr.Flush(); flushErr != nil {
+				return flushErr
 			}
 		}
 		if err != nil {

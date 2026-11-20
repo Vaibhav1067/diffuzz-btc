@@ -16,7 +16,7 @@
 //! [match]
 //! accepts = ["core"]                     # implementations that accept
 //! rejects = ["btcd"]                     # implementations that reject
-//! reject_error_classes = ["SCRIPT_NUM"]  # optional: any-of, for the rejecting affected impls
+//! reject_error_classes = ["SCRIPT_NUM"]  # optional: any-of, for every impl in `rejects`
 //! raw_error_contains = "number too big"  # optional
 //! ```
 
@@ -37,10 +37,10 @@ pub struct Matcher {
     /// Implementations that must have rejected.
     #[serde(default)]
     pub rejects: Vec<String>,
-    /// If non-empty, every rejecting affected implementation must report one of these classes.
+    /// If non-empty, every implementation in `rejects` must report one of these classes.
     #[serde(default)]
     pub reject_error_classes: Vec<ErrorClass>,
-    /// If set, every rejecting affected implementation's raw error must contain this text.
+    /// If set, the raw error of every implementation in `rejects` must contain this text.
     #[serde(default)]
     pub raw_error_contains: Option<String>,
 }
@@ -135,7 +135,8 @@ impl KnownDivergence {
     ///    voted reject (an implementation that is absent or abstained fails the match);
     /// 3. the implementations *not* in `impls_affected` are unanimous, so the affected ones
     ///    account for the whole disagreement;
-    /// 4. the optional error-class and raw-error filters hold for every affected rejecter.
+    /// 4. the optional error-class and raw-error filters hold for every implementation in
+    ///    `rejects`, whichever side the affected implementations are on.
     pub fn matches(&self, case: &Case, verdicts: &[Verdict]) -> bool {
         if !self.flags_condition.iter().all(|f| case.flags.contains(f)) {
             return false;
@@ -183,7 +184,7 @@ impl KnownDivergence {
         }
         for v in verdicts
             .iter()
-            .filter(|v| self.impls_affected.contains(&v.impl_name))
+            .filter(|v| self.matcher.rejects.contains(&v.impl_name))
         {
             if let Outcome::Fail {
                 error_class,
@@ -400,6 +401,14 @@ raw_error_contains = "too big"
         assert!(!e.matches(&case(vec![Flag::Taproot]), &other_text));
         // An implementation named in the matcher is missing or abstained.
         assert!(!e.matches(&case(vec![Flag::Taproot]), &[ok("core")]));
+        // Filters also bind when the affected implementation is the one that accepts.
+        let mut accepting = entry();
+        accepting.matcher.accepts = vec!["btcd".into()];
+        accepting.matcher.rejects = vec!["core".into()];
+        let as_listed = [fail("core", ErrorClass::ScriptNum, "too big"), ok("btcd")];
+        assert!(accepting.matches(&case(vec![Flag::Taproot]), &as_listed));
+        let new_bug = [fail("core", ErrorClass::EvalFalse, "too big"), ok("btcd")];
+        assert!(!accepting.matches(&case(vec![Flag::Taproot]), &new_bug));
         let abstained = [ok("core"), fail("btcd", ErrorClass::Unsupported, "too big")];
         assert!(!e.matches(&case(vec![Flag::Taproot]), &abstained));
     }

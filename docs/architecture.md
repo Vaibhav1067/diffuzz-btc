@@ -97,7 +97,8 @@ The findings writer refuses to start if its directory is inside a git work tree 
 
 Only consensus flags are used in the main oracle. Policy/standardness flags (STRICTENC, LOW_S,
 MINIMALIF, CLEANSTACK, DISCOURAGE_*, ...) differ between implementations by design and would
-drown real signal; they are confined to an opt-in policy mode.
+drown real signal. A disagreement on a case that carries any policy flag is classified
+`UNDECIDED`, never as a finding; there is no policy mode.
 
 ## Why these oracles
 

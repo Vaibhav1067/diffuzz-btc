@@ -135,19 +135,15 @@ pub fn score(tests: &[VectorTest], verdicts: &[Verdict], name: &str) -> ImplRepo
             expected_error: t.expected_error.clone(),
             got: vs.iter().map(describe).collect(),
         };
+        // A rejected input already fails a valid vector, whatever the other inputs did.
+        let already_failed = t.expect_valid && accepted.contains(&false);
         // A crash or timeout never counts as meeting an expectation, even "invalid".
-        if !broken && abstained {
+        if !broken && abstained && !already_failed {
             report.abstained.push(entry());
         } else if !broken && t.satisfied_by(&accepted) {
             report.passed += 1;
         } else {
-            report.mismatches.push(Mismatch {
-                name: t.name.clone(),
-                comment: t.comment.clone(),
-                expect_valid: t.expect_valid,
-                expected_error: t.expected_error.clone(),
-                got: vs.iter().map(describe).collect(),
-            });
+            report.mismatches.push(entry());
         }
     }
     report
@@ -324,6 +320,17 @@ mod tests {
         let r = score(&tests, &verdicts, "x");
         assert_eq!((r.passed, r.mismatches.len(), r.abstained.len()), (0, 0, 2));
         assert_eq!(r.abstained[0].name, "a");
+    }
+
+    #[test]
+    fn abstention_does_not_hide_a_rejected_valid_input() {
+        let tests = vec![test("v", 2, true)];
+        let unsupported = Outcome::Fail {
+            error_class: ErrorClass::Unsupported,
+            raw_error: "limit".into(),
+        };
+        let r = score(&tests, &[verdict(unsupported), verdict(fail())], "x");
+        assert_eq!((r.passed, r.mismatches.len(), r.abstained.len()), (0, 1, 0));
     }
 
     #[test]

@@ -280,15 +280,22 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
     Ok(Duration::from_secs(secs))
 }
 
+/// Start one adapter process per implementation, each with the given timeout.
+fn spawn_adapters(impls: &[String], timeout_ms: u64) -> Result<Vec<Adapter>, String> {
+    impls
+        .iter()
+        .map(|name| {
+            let mut cfg = resolve(name)?;
+            cfg.timeout = Duration::from_millis(timeout_ms);
+            let program = cfg.program.display().to_string();
+            Adapter::spawn(cfg).map_err(|e| format!("cannot start {program}: {e}"))
+        })
+        .collect()
+}
+
 /// Start the adapters and build the differential runner.
 fn build_oracle(args: &OracleArgs) -> Result<Differential, String> {
-    let mut adapters = Vec::new();
-    for name in &args.impls {
-        let mut cfg = resolve(name)?;
-        cfg.timeout = Duration::from_millis(args.timeout_ms);
-        let program = cfg.program.display().to_string();
-        adapters.push(Adapter::spawn(cfg).map_err(|e| format!("cannot start {program}: {e}"))?);
-    }
+    let adapters = spawn_adapters(&args.impls, args.timeout_ms)?;
     let allowlist = Allowlist::load_dir(&args.known_dir, Path::new("."))?;
     let sink = FindingsSink::new(&args.findings_dir)?;
     Ok(Differential::new(adapters, allowlist, Some(sink)))
@@ -297,13 +304,7 @@ fn build_oracle(args: &OracleArgs) -> Result<Differential, String> {
 /// Like [`build_oracle`] but without a findings sink and without warnings: for commands that
 /// probe many candidate cases (minimizer, report), which must not be recorded as new findings.
 fn build_probe(args: &OracleArgs) -> Result<Differential, String> {
-    let mut adapters = Vec::new();
-    for name in &args.impls {
-        let mut cfg = resolve(name)?;
-        cfg.timeout = Duration::from_millis(args.timeout_ms);
-        let program = cfg.program.display().to_string();
-        adapters.push(Adapter::spawn(cfg).map_err(|e| format!("cannot start {program}: {e}"))?);
-    }
+    let adapters = spawn_adapters(&args.impls, args.timeout_ms)?;
     let mut diff = Differential::new(adapters, Allowlist::empty(), None);
     diff.set_quiet(true);
     Ok(diff)
@@ -339,6 +340,13 @@ fn cmd_minimize(args: &MinimizeArgs) -> Result<bool, String> {
         args.max_attempts,
     );
     let text = serde_json::to_string_pretty(&min).map_err(|e| e.to_string())?;
+    // A minimized divergence is as private as the finding it came from.
+    let out_dir = args
+        .out
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    diffuzz_oracle::findings::check_untracked(out_dir)?;
     std::fs::write(&args.out, text).map_err(|e| format!("{}: {e}", args.out.display()))?;
     println!(
         "{} -> {} bytes in {} oracle calls ({} accepted, {} rounds); wrote {}",
@@ -438,9 +446,7 @@ fn cmd_export(args: &CheckArgs) -> Result<bool, String> {
     let verdicts = run_one(&mut diff, &case);
     // The first implementation listed is the reference for "valid" or "invalid".
     let reference = verdicts.first().ok_or("no implementation answered")?;
-    let valid = reference
-        .outcome
-        .accepted()
+    let valid = diffuzz_oracle::diff::vote(reference)
         .ok_or_else(|| format!("{} gave no verdict for this case", reference.impl_name))?;
     let vector =
         diffuzz_triage::report::export_tx_vector(&case, valid).ok_or("case cannot be decoded")?;
@@ -581,14 +587,7 @@ fn cmd_fuzz(args: &FuzzArgs) -> Result<bool, String> {
 }
 
 fn cmd_check(args: &CheckArgs) -> Result<bool, String> {
-    let text =
-        std::fs::read_to_string(&args.case).map_err(|e| format!("{}: {e}", args.case.display()))?;
-    // Accept either a bare case or a finding record wrapping one.
-    let case: Case = match serde_json::from_str::<FindingRecord>(&text) {
-        Ok(record) => record.case,
-        Err(_) => serde_json::from_str(&text)
-            .map_err(|e| format!("{}: neither a finding nor a case: {e}", args.case.display()))?,
-    };
+    let (case, _) = read_case(&args.case)?;
     let mut diff = build_oracle(&args.oracle)?;
     diff.set_quiet(true);
     let result = diff
@@ -639,13 +638,7 @@ fn cmd_aux(args: &AuxArgs) -> Result<bool, String> {
         println!("generated checks: seed {} count {}", args.seed, args.count);
         checks.extend(auxcmd::generated_checks(&checks, args.seed, args.count));
     }
-    let mut adapters = Vec::new();
-    for name in &args.impls {
-        let mut cfg = resolve(name)?;
-        cfg.timeout = Duration::from_millis(args.timeout_ms);
-        let program = cfg.program.display().to_string();
-        adapters.push(Adapter::spawn(cfg).map_err(|e| format!("cannot start {program}: {e}"))?);
-    }
+    let mut adapters = spawn_adapters(&args.impls, args.timeout_ms)?;
     std::fs::create_dir_all(&args.findings_dir)
         .map_err(|e| format!("{}: {e}", args.findings_dir.display()))?;
     let report = auxcmd::run(&checks, &mut adapters, &args.findings_dir)?;

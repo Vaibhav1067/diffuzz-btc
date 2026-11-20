@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include <exception>
+#include <unistd.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -226,7 +227,11 @@ static njson handle(const std::string& line)
     {
         return respond(0, false, "DESERIALIZE", std::string("bad request: ") + e.what());
     }
-    const uint64_t id = req.value("id", uint64_t{0});
+    if (!req.is_object())
+        return respond(0, false, "DESERIALIZE", "bad request: not a JSON object");
+    const auto id_field = req.find("id");
+    const uint64_t id = id_field != req.end() && id_field->is_number_unsigned()
+        ? id_field->get<uint64_t>() : 0;
     if (req.contains("op"))
         return handle_aux(id, req);
     try
@@ -291,7 +296,10 @@ int main()
     {
         if (line.find_first_not_of(" \t\r") == std::string::npos)
             continue;
+        // Killing `docker run` on a timeout does not stop the container: end a hung request here.
+        alarm(30);
         std::cout << handle(line).dump() << '\n' << std::flush;
+        alarm(0);
     }
     return 0;
 }

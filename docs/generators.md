@@ -157,7 +157,10 @@ Distribution measured on the default weights is recorded with the fuzzing result
 ## Known gaps
 
 - No generator for taproot script trees with more than one *known* leaf (siblings are random
-  hashes), and none for P2SH-wrapped taproot, which is not a taproot spend.
+  hashes). Deliberately: a verifier sees only the control block's sibling hashes, which look the
+  same whether they hash a real leaf or not, and random siblings already take both branch
+  orderings. Not covered: a sibling equal to the node it joins (a tree holding the same leaf
+  twice), which random hashes never produce. None for P2SH-wrapped taproot either, which is not a taproot spend.
 - Re-signing (below) covers only signatures made by test keys, and skips taproot key-path
   spends and scripts containing `OP_CODESEPARATOR`. Mutants of Core's vectors are never
   re-signed.

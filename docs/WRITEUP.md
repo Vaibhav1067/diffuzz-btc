@@ -163,9 +163,10 @@ disclosure rule). This section lists only what has been cleared for publication.
 - **Independence is partial.** btcd and libbitcoin are independent designs; NBitcoin is a
   close port of Core's structure, so shared misreadings of Core are less likely to show up
   between Core and NBitcoin.
-- **Generator gaps** (`generators.md`): at most twelve inputs and six outputs, no multi-leaf taproot
-  trees with more than one known leaf; the mutator re-signs only signatures made with the
-  generator's own test keys, and only half of its mutants.
+- **Generator gaps** (`generators.md`): at most twelve inputs and six outputs; taproot
+  siblings are random hashes rather than real leaves (indistinguishable to a verifier, except
+  a sibling equal to its node, which is never generated); the mutator re-signs only signatures
+  made with the generator's own test keys, and only half of its mutants.
 - **One machine, short runs.** The longest run here is two hours. These rates are for this
   machine only.
 - **Allowlist is trust-based.** An entry hides every case matching its conditions. Entries

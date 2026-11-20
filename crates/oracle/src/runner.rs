@@ -217,6 +217,9 @@ impl Differential {
             RawClass::Crash => (Class::Crash, None),
             RawClass::Timeout => (Class::Timeout, None),
             RawClass::Undecided => (Class::Undecided, None),
+            // Policy flags differ between implementations by design (rule 5): a disagreement
+            // under them is not a consensus finding, so there is nothing to compare.
+            RawClass::Diverge if !case.is_consensus_only() => (Class::Undecided, None),
             RawClass::Diverge => match self.allowlist.find(case, verdicts) {
                 Some(entry) => (Class::Known, Some(entry.id.clone())),
                 None => (Class::HardDiverge, None),
@@ -302,9 +305,7 @@ impl Differential {
                     );
                     eprintln!("!! match. Do NOT publish this file. Review it privately first.");
                 }
-                for v in verdicts {
-                    eprintln!("!!   {:<10} {:?}", v.impl_name, v.outcome);
-                }
+                // Verdicts stay in the private file: terminal output may end up in a public log.
                 eprintln!("{bar}");
             }
             Ok(None) => {}
@@ -316,6 +317,37 @@ impl Differential {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn policy_flag_divergence_is_not_a_finding() {
+        use diffuzz_types::{ErrorClass, Flag, Outcome};
+        let d = Differential::new(vec![], Allowlist::empty(), None);
+        let verdict = |name: &str, outcome| Verdict {
+            impl_name: name.into(),
+            impl_version: "1".into(),
+            outcome,
+        };
+        let split = [
+            verdict("btcd", Outcome::Ok),
+            verdict(
+                "nbitcoin",
+                Outcome::Fail {
+                    error_class: ErrorClass::ScriptFail,
+                    raw_error: String::new(),
+                },
+            ),
+        ];
+        let mut case = Case {
+            tx_hex: "00".into(),
+            input_index: 0,
+            prevouts: vec![],
+            flags: vec![Flag::P2sh],
+            origin: None,
+        };
+        assert_eq!(d.classify_case(&case, &split).0, Class::HardDiverge);
+        case.flags.push(Flag::LowS);
+        assert_eq!(d.classify_case(&case, &split).0, Class::Undecided);
+    }
 
     #[test]
     fn adapter_metrics_math() {
