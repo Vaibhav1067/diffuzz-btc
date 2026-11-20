@@ -87,6 +87,7 @@ release builds, 12 workers, each worker running its own process per implementati
 | G | core, btcd, nbitcoin, libbitcoin | 20261127 | 300 s | 3,346,688 | 11,146 | 1,291,915 | 2,046,955 | 7,818 | 0 |
 | H | core, core-kernel, btcd, nbitcoin, libbitcoin | 20261128 | 300 s | 2,560,000 | 8,525 | 987,743 | 1,566,208 | 6,049 | 0 |
 | I | core, core-kernel, btcd, nbitcoin, libbitcoin | 20261130 | 7,173 s | 59,313,408 | 8,269 | 22,834,291 | 36,340,648 | 138,469 | 0 |
+| J | core, core-kernel, btcd, nbitcoin, libbitcoin | 20261200 | 23,422 s | 200,101,632 | 8,543 | 77,052,084 | 122,581,759 | 467,788 | 1 |
 
 Run C is `scripts/run_overnight.sh` (six 10-minute segments, re-signing enabled); a Docker
 build of libbitcoin overlapped its last segments, so its rate is a lower bound. In run D
@@ -102,7 +103,12 @@ these numbers. Run G is the first with the wider skeleton (up to 12 inputs, P2TR
 outputs); run H adds current Core, so five interpreters vote on every case. Run I is twelve
 10-minute segments with all five: per process Core 26.0 11,356/s (p50 85 µs), NBitcoin 4,574/s,
 btcd 4,241/s, current Core 1,037/s and libbitcoin 1,034/s (both p50 about 1 ms, through
-Docker), no process restarts, 1.5 million distinct behavioural signatures.
+Docker), no process restarts, 1.5 million distinct behavioural signatures. Run J is the
+overnight run with all five (planned as seven hours; it stopped after 40 segments on its one
+hard divergence, as the runner does). That case was triaged privately: two divergences that
+are each already allowlisted occurred in the same case, so neither entry matched on its own.
+Removing either cause turns it into a known divergence or a unanimous result. No new
+disagreement. Entries were deliberately not widened to match such overlaps.
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON
@@ -112,7 +118,7 @@ while sharing the machine with it).
 Corpus replay (all four): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence. Current
 Core (`core-kernel`) passes all 963 runnable vectors as well, identically to Core 26.0.
 
-In total, about 218 million generated script cases ran through the differential in these runs,
+In total, about 418 million generated script cases ran through the differential in these runs,
 plus earlier development runs.
 
 ### Transaction decoding and signature hashes
@@ -161,7 +167,7 @@ disclosure rule). This section lists only what has been cleared for publication.
 - **Current Core is a development snapshot.** `libbitcoinconsensus` was removed after 26.x, so
   the main Core adapter is 26.0. Current Core runs through `libbitcoinkernel` (`core-kernel`),
   pinned to master at 70d9ec7f3d4 (2026-07), not to a release, and only in Docker. It joined
-  in run H, so runs A–G compared Core 26.0 only; run I is its one long run.
+  in run H, so runs A–G compared Core 26.0 only; runs I and J are its long runs.
 - **No block-level checks.** Only per-input script verification: no `CheckTransaction`,
   sigop counting across a block, weight limits, coinbase rules or contextual checks.
 - **Independence is partial.** btcd and libbitcoin are independent designs; NBitcoin is a
@@ -171,7 +177,7 @@ disclosure rule). This section lists only what has been cleared for publication.
   siblings are random hashes rather than real leaves (indistinguishable to a verifier, except
   a sibling equal to its node, which is never generated); the mutator re-signs only signatures
   made with the generator's own test keys, and only half of its mutants.
-- **One machine, short runs.** The longest run here is two hours. These rates are for this
+- **One machine, short runs.** The longest run here is six and a half hours. These rates are for this
   machine only.
 - **Allowlist is trust-based.** An entry hides every case matching its conditions. Entries
   are kept narrow, but a second bug with the same shape would be hidden behind the first.
