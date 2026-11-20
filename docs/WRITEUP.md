@@ -71,7 +71,7 @@ example case and a reason, and must state the direction of the disagreement.
 
 ## 3. Results
 
-Measured on 2026-11-16 to 2026-11-19 on one Windows 11 x86_64 machine with 16 logical cores,
+Measured on 2026-11-16 to 2026-11-20 on one Windows 11 x86_64 machine with 16 logical cores,
 release builds, 12 workers, each worker running its own process per implementation.
 
 ### Script verification
@@ -86,6 +86,7 @@ release builds, 12 workers, each worker running its own process per implementati
 | F | core, btcd, nbitcoin, libbitcoin | 20261125 | 300 s | 2,721,536 | 9,066 | 1,049,588 | 1,665,493 | 6,455 | 0 |
 | G | core, btcd, nbitcoin, libbitcoin | 20261127 | 300 s | 3,346,688 | 11,146 | 1,291,915 | 2,046,955 | 7,818 | 0 |
 | H | core, core-kernel, btcd, nbitcoin, libbitcoin | 20261128 | 300 s | 2,560,000 | 8,525 | 987,743 | 1,566,208 | 6,049 | 0 |
+| I | core, core-kernel, btcd, nbitcoin, libbitcoin | 20261130 | 7,173 s | 59,313,408 | 8,269 | 22,834,291 | 36,340,648 | 138,469 | 0 |
 
 Run C is `scripts/run_overnight.sh` (six 10-minute segments, re-signing enabled); a Docker
 build of libbitcoin overlapped its last segments, so its rate is a lower bound. In run D
@@ -98,7 +99,10 @@ output on purpose (about 1% of cases, see `generators.md`).
 Runs A–F used the skeleton of 1 to 3 inputs and 0 to 3 outputs (up to commit f14253e).
 Later commits draw different cases from the same seed; check out that commit to reproduce
 these numbers. Run G is the first with the wider skeleton (up to 12 inputs, P2TR among spent
-outputs); run H adds current Core, so five interpreters vote on every case.
+outputs); run H adds current Core, so five interpreters vote on every case. Run I is twelve
+10-minute segments with all five: per process Core 26.0 11,356/s (p50 85 µs), NBitcoin 4,574/s,
+btcd 4,241/s, current Core 1,037/s and libbitcoin 1,034/s (both p50 about 1 ms, through
+Docker), no process restarts, 1.5 million distinct behavioural signatures.
 
 Per-process rates in run A: Core 13,427/s (p50 72 µs), btcd 5,795/s (p50 151 µs). The
 aggregate exceeds the 20k cases/s target in `CLAUDE.md` without a binary protocol, so the JSON
@@ -108,7 +112,7 @@ while sharing the machine with it).
 Corpus replay (all four): 1029 cases, 863 agree-accept, 166 agree-reject, no divergence. Current
 Core (`core-kernel`) passes all 963 runnable vectors as well, identically to Core 26.0.
 
-In total, about 150 million generated script cases ran through the differential in these runs,
+In total, about 218 million generated script cases ran through the differential in these runs,
 plus earlier development runs.
 
 ### Transaction decoding and signature hashes
@@ -157,7 +161,7 @@ disclosure rule). This section lists only what has been cleared for publication.
 - **Current Core is a development snapshot.** `libbitcoinconsensus` was removed after 26.x, so
   the main Core adapter is 26.0. Current Core runs through `libbitcoinkernel` (`core-kernel`),
   pinned to master at 70d9ec7f3d4 (2026-07), not to a release, and only in Docker. It joined
-  in run H, so the long runs A–F compared Core 26.0 only.
+  in run H, so runs A–G compared Core 26.0 only; run I is its one long run.
 - **No block-level checks.** Only per-input script verification: no `CheckTransaction`,
   sigop counting across a block, weight limits, coinbase rules or contextual checks.
 - **Independence is partial.** btcd and libbitcoin are independent designs; NBitcoin is a
